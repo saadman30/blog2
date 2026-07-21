@@ -8,15 +8,17 @@ PCMS can answer three questions about itself while it runs:
 
 A Docker Compose stack can run the supporting tools (OTel Collector, Prometheus, Loki, Grafana) so you can see everything in dashboards.
 
-| Doc | What it covers |
-|-----|----------------|
-| [01 — Overview](./01-overview.md) | The three pillars, how data flows, ports |
-| [02 — Distributed tracing](./02-tracing.md) | OpenTelemetry in API + web, trace propagation |
-| [03 — Logging](./03-logging.md) | Pino, log levels, trace_id in every log line |
-| [04 — Metrics](./04-metrics.md) | Prometheus `/metrics`, custom HTTP + DB pool metrics |
-| [05 — Health checks](./05-health-checks.md) | Liveness vs readiness, Terminus |
-| [06 — Docker stack & Grafana](./06-docker-stack-and-grafana.md) | Compose services, dashboards, how to open Grafana |
-| [07 — Gaps & runbook](./07-gaps-and-runbook.md) | What works today, what is prepared but not wired, troubleshooting |
+**In the main docs:** this section is **steps 12 → 19** in [docs/README.md](../README.md). Within observability, read **01 → 07** in order.
+
+| # | Doc | What it covers |
+|---|-----|----------------|
+| 1 | [01 — Overview](./01-overview.md) | The three pillars, how data flows, ports |
+| 2 | [02 — Distributed tracing](./02-tracing.md) | OpenTelemetry in API + web, trace propagation |
+| 3 | [03 — Logging](./03-logging.md) | Pino, log levels, trace_id in every log line |
+| 4 | [04 — Metrics](./04-metrics.md) | Prometheus `/metrics`, custom HTTP + DB pool metrics |
+| 5 | [05 — Health checks](./05-health-checks.md) | Liveness vs readiness, Terminus |
+| 6 | [06 — Docker stack & Grafana](./06-docker-stack-and-grafana.md) | Compose services, dashboards, how to open Grafana |
+| 7 | [07 — Gaps & runbook](./07-gaps-and-runbook.md) | What works today, what is prepared but not wired, troubleshooting |
 
 ## Quick start (full observability stack)
 

@@ -4,9 +4,9 @@ Monorepo for a secure, Dockerized portfolio and blog CMS.
 
 ## Technical documentation
 
-Detailed under-the-hood docs (architecture, API, web, auth, DB, Docker, flows, gaps):
+Full under-the-hood docs: **[docs/README.md](./docs/README.md)**
 
-**→ [docs/README.md](./docs/README.md)**
+**Reading order (1 → 19):** foundations **1–4** → app code **5–8** → ops **9–11** → observability **12–19**. Shortcuts for “run only”, “API only”, “Grafana only”, etc. are in the docs README.
 
 ## Stack
 
