@@ -1,0 +1,63 @@
+---
+description: PCMS monorepo context, structure, docs, and workflow conventions. Always apply when working in this repo.
+alwaysApply: true
+---
+
+# PCMS project context
+
+**PCMS** = Portfolio & Content Management System. npm workspaces monorepo (`pcms`).
+
+## Source of truth
+
+| App | Path | Stack |
+|-----|------|-------|
+| API | `apps/api` (`@pcms/api`) | NestJS 10, TypeORM, PostgreSQL, Redis/BullMQ |
+| Web | `apps/web` (`@pcms/web`) | Astro 5 (static SSG), React 19 islands, Tailwind + SCSS |
+
+**Do not** reference or recreate deleted `frontend/` / `backend/` trees. Current layout is `apps/web` + `apps/api` only.
+
+## Documentation
+
+Read before large changes:
+- Index: `docs/README.md`
+- Architecture: `docs/01-overview-and-architecture.md`
+- Gaps / honesty map: `docs/11-current-gaps.md` — **do not oversell stubbed features**
+
+Observability: `docs/observability/README.md`
+
+## Commands (from repo root)
+
+```bash
+npm run dev:api      # API on :3001
+npm run dev:web      # Web on :4321
+npm run test:api     # Jest + 100% coverage threshold
+npm run test:web     # Vitest + 100% coverage threshold
+npm run lint         # Both apps, --max-warnings=0
+npm run build        # API then web
+```
+
+Node **>= 20**. Env: `.env` (copy from `.env.example`).
+
+## Ports
+
+| Service | Port |
+|---------|------|
+| Web | 4321 |
+| API (`/api` prefix) | 3001 |
+| PostgreSQL | 5432 |
+| Redis | 6379 |
+
+## Agent workflow
+
+- **Investigate first** — read relevant code and docs before editing.
+- **Run commands** — this is a real environment; verify with tests/lint when changing behavior.
+- **No unsolicited commits** — only commit when explicitly asked.
+- **No unsolicited docs** — don't create or edit markdown unless requested.
+- **Minimize scope** — smallest correct diff; reuse existing modules, utils, and patterns.
+- **Preserve API contract** — responses use `{ success, data }` envelope via `TransformInterceptor`.
+
+## What exists vs stubbed
+
+Fully wired: auth, posts CRUD/publish/schedule, analytics, media upload, health, Docker stack, back-office login/write.
+
+Partial/stubbed: full blog SSG from API, tag pages, `/app/posts` admin table, `/app/media` upload UI, 2FA endpoints, S3 adapter, comments module, seeds. See `docs/11-current-gaps.md` before claiming a feature is done.

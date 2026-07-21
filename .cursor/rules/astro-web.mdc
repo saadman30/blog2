@@ -1,0 +1,68 @@
+---
+description: Astro web app conventions — static SSG, React islands, shadcn/ui, API client, styles.
+globs: apps/web/**/*.{ts,tsx,astro,scss,mjs}
+alwaysApply: false
+---
+
+# Astro Web (`apps/web`)
+
+Package: `@pcms/web`. **Astro 5 static site** — not Next.js.
+
+## Architecture
+
+- `output: 'static'` — build emits `dist/`; no SSR server in production
+- React 19 **islands only** — interactive UI in `.tsx` with `client:*` directives in `.astro` pages
+- Client state: **nanostores** (`src/stores/`) — not Zustand
+- UI primitives: shadcn-style in `src/components/ui/` (Radix + CVA + Tailwind)
+- Path alias: `@/*` → `src/*`
+
+## Folder map
+
+```
+src/pages/          → routes (file-based)
+src/layouts/        → BaseLayout, BlogLayout
+src/components/     → islands + backoffice forms
+src/utils/          → api-client, cn, content, theme
+src/styles/         → global SCSS, _variables, _mixins
+tests/              → Vitest suites
+```
+
+## API client
+
+Use `src/utils/api-client.ts` for all fetch calls:
+- Base URL from `PUBLIC_API_URL` (see `env.d.ts`)
+- Credentials `include` for refresh-cookie auth
+- Trace headers via `trace-headers.ts` when OTel is active
+
+```typescript
+// ✅ Use existing client
+import { api } from '@/utils/api-client';
+const posts = await api.get<Post[]>('/posts');
+```
+
+## Styling
+
+- Tailwind with `applyBaseStyles: false` — tokens in `tailwind.config.mjs`
+- SCSS: Vite auto-injects `@import "variables"; @import "mixins";`
+- Use `cn()` from `@/utils/cn` for conditional classes
+- Match existing fonts: Source Sans 3 + Fraunces
+
+## Astro pages
+
+- Fetch at build time in frontmatter for static content
+- Pass data as props to layouts; hydrate React islands only where needed
+- Demo fallbacks exist in blog index — check `docs/11-current-gaps.md` before removing
+
+## Back office (`/app/*`)
+
+- `LoginForm.tsx`, `WriteForm.tsx` in `components/backoffice/`
+- Auth store: `auth-store.ts` — hydrate on `/app` mount when implementing session restore
+- Stub pages (`/app/posts`, `/app/media`, `/app/settings`) need real API wiring, not copy-only changes
+
+## Anti-patterns
+
+- Next.js patterns (App Router, `use server`, `getServerSideProps`)
+- Full-page React SPA routing inside Astro
+- Direct `fetch()` bypassing `api-client` (unless build-time with explicit reason)
+- New state library (Redux, Zustand) — use nanostores
+- Client-side secrets — only `PUBLIC_*` env vars are safe in browser

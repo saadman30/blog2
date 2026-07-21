@@ -1,0 +1,74 @@
+---
+description: NestJS API conventions for apps/api — modules, auth, TypeORM, validation, observability.
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# NestJS API (`apps/api`)
+
+Package: `@pcms/api`. Entry: `src/main.ts`. Root module: `src/app.module.ts`.
+
+## Module layout
+
+Each feature under `src/modules/<name>/`:
+- `*.module.ts`, `*.controller.ts`, `*.service.ts`
+- `dto/` for request/response shapes
+- `*.spec.ts` beside each testable unit
+
+Shared code lives in `src/common/` (guards, filters, interceptors, decorators, utils).
+
+## Conventions
+
+- Global prefix: `/api` (set in `main.ts`)
+- Config via `ConfigService`: `config.get('database.host')` — namespaces in `src/config/configuration.ts`
+- Validation: `class-validator` DTOs + global `ValidationPipe`
+- Auth: JWT access token in body; refresh in HttpOnly SameSite=Strict cookie
+- RBAC: `@Roles()` + `RolesGuard`; public routes via `@Public()`
+- Rate limiting: `@nestjs/throttler` on sensitive auth routes
+- Content: Markdown via `marked`, sanitize with DOMPurify (`content.util.ts`)
+- Media: Sharp → WebP, local disk under `MEDIA_LOCAL_PATH`
+
+## Database
+
+- Entities: `src/database/entities/`
+- Migrations: `src/database/migrations/` — use TypeORM CLI scripts in `package.json`
+- Do **not** rely on `synchronize: true` in production paths; use migrations
+
+## Observability
+
+- Logging: Pino via `nestjs-pino`
+- Metrics: Prometheus at `/metrics` (not under `/api`)
+- Tracing: OpenTelemetry — loaded via `tracing.ts` before `main.ts`
+- Health: `@nestjs/terminus` — liveness vs readiness in health module
+
+## Adding endpoints
+
+```typescript
+// ✅ Match existing patterns
+@Controller('posts')
+@UseGuards(JwtAuthGuard, RolesGuard)
+export class PostsController {
+  @Get('admin')
+  @Roles(UserRole.ADMIN, UserRole.EDITOR)
+  findAllAdmin() { ... }
+}
+```
+
+- Permission-check every new route
+- Return data through existing interceptors/filters
+- Add `*.spec.ts` with mocked repositories/queues — **100% coverage** on included paths
+
+## Testing (Jest)
+
+- Colocate: `foo.service.spec.ts` next to `foo.service.ts`
+- Setup: `jest.setup.ts` (reflect-metadata, DOMPurify mock)
+- Excluded from coverage: `main.ts`, `*.module.ts`, DTOs, entities, enums, migrations
+- Run: `npm run test:cov -w @pcms/api`
+
+## Anti-patterns
+
+- New global providers without wiring in `AppModule`
+- Raw SQL when TypeORM repository suffices
+- Skipping validation DTOs on POST/PATCH bodies
+- Returning unsanitized HTML from user Markdown
+- Integration tests in `test/` folder (empty — use unit mocks unless harness is added)

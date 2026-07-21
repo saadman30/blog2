@@ -1,0 +1,70 @@
+---
+description: Testing standards — Jest (API) and Vitest (web) with 100% coverage thresholds on measured paths.
+globs: "{apps/api/**/*.spec.ts,apps/web/tests/**/*.{ts,tsx},apps/web/src/**/*.{test,spec}.{ts,tsx}}"
+alwaysApply: false
+---
+
+# Testing standards
+
+Both apps enforce **100%** coverage (statements, branches, functions, lines) on included source paths. CI will fail below threshold.
+
+## API — Jest (`apps/api`)
+
+Config: `jest.config.ts` | Setup: `jest.setup.ts`
+
+```bash
+npm run test:cov -w @pcms/api
+```
+
+### Patterns
+
+- Unit tests with mocks (repositories, `ConfigService`, BullMQ queues)
+- Colocate `*.spec.ts` beside implementation
+- Test guards, filters, interceptors, strategies — not just services
+
+```typescript
+// ✅ Mock dependencies, test behavior
+const repo = { findOne: jest.fn().mockResolvedValue(mockPost) };
+const service = new PostsService(repo as any, ...);
+await expect(service.findBySlug('missing')).rejects.toThrow(NotFoundException);
+```
+
+### Excluded from coverage (don't chase these)
+
+`main.ts`, `tracing.ts`, `*.module.ts`, `*.dto.ts`, `*.entity.ts`, `*.enum.ts`, migrations, seeds, metrics constants/providers
+
+## Web — Vitest (`apps/web`)
+
+Config: `vitest.config.ts` | Setup: `tests/setup.ts` | Environment: jsdom
+
+```bash
+npm run test:cov -w @pcms/web
+```
+
+### Included in coverage
+
+- `src/utils/**`
+- `src/stores/**`
+- `src/components/ui/**`
+
+New utils/stores/UI primitives **must** have tests in `tests/` or colocated `*.test.ts(x)`.
+
+### Patterns
+
+- `@testing-library/react` for UI components
+- Test SSR safety (`typeof window === 'undefined'`) for stores/utils used at build time
+- Mock `fetch` when testing `api-client`
+
+## When adding features (Karpathy-aligned)
+
+1. Define verifiable success: "tests pass with coverage"
+2. Write failing test first when fixing bugs
+3. Run the relevant `test:cov` before finishing
+4. Don't add trivial tests that only assert mocks — test real behavior edges
+
+## Anti-patterns
+
+- Skipping tests because "it's just a small change"
+- Broad integration tests without harness (API `test/` folder is empty)
+- Lowering coverage thresholds to make CI pass
+- Testing implementation details instead of public API/behavior

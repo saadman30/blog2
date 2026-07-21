@@ -1,0 +1,42 @@
+---
+description: Security and auth rules — JWT, RBAC, validation, sanitization, rate limits. Apply when touching auth, API routes, or user content.
+globs: "{apps/api/src/modules/auth/**,apps/api/src/common/**,apps/web/src/stores/**,apps/web/src/utils/api-client.ts,apps/web/src/components/backoffice/**}"
+alwaysApply: false
+---
+
+# Security & auth
+
+Reference: `docs/04-auth-and-security.md`
+
+## API security stack
+
+- **Helmet** — security headers (global in `main.ts`)
+- **CORS** — strict origin from `CORS_ORIGIN` config
+- **ValidationPipe** — strip unknown properties, reject invalid bodies
+- **Throttler** — rate limits on auth endpoints
+- **JWT** — short-lived access token; refresh in HttpOnly cookie
+- **RBAC** — `ADMIN` / `EDITOR` via `@Roles()` decorator
+
+## Rules for new code
+
+- Every protected route: `@UseGuards(JwtAuthGuard, RolesGuard)` + explicit `@Roles()` or `@Public()`
+- Never log secrets, tokens, or passwords
+- Hash passwords with bcrypt (existing pattern in `auth.service.ts`)
+- Sanitize all user Markdown/HTML through `renderHtml` / DOMPurify before storage or response
+- Validate and constrain file uploads (type, size) in media module
+- Use parameterized queries via TypeORM — no string-concatenated SQL
+
+## Web auth
+
+- Access token in memory / sessionStorage via `auth-store.ts`
+- API calls that need refresh cookie: `credentials: 'include'`
+- Never store refresh token in localStorage or expose it to client JS
+- Don't add auth tokens to URLs or logs
+
+## Anti-patterns
+
+- `@Public()` on admin routes "for testing"
+- Trusting client-side role checks without server enforcement
+- Rendering raw `post.content` without sanitization
+- Disabling ValidationPipe or CORS for convenience
+- Hardcoding secrets — use env vars via `configuration.ts`

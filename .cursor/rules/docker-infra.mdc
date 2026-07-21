@@ -1,0 +1,38 @@
+---
+description: Docker, compose, and observability stack conventions.
+globs: "{docker/**,apps/api/src/tracing.ts,apps/api/src/common/logger/**,apps/api/src/common/metrics/**,apps/web/src/instrumentation.mjs}"
+alwaysApply: false
+---
+
+# Docker & infrastructure
+
+Compose: `docker/docker-compose.yml` | Docs: `docs/09-docker-and-infrastructure.md`
+
+## Services
+
+| Service | Purpose |
+|---------|---------|
+| postgres | Primary DB |
+| redis | BullMQ + health |
+| api | NestJS container |
+| web | Astro static build served |
+| prometheus, grafana, loki, otel-collector | Observability stack |
+
+## Conventions
+
+- Multi-stage Dockerfiles in `docker/Dockerfile.api` and `docker/Dockerfile.web`
+- Env vars shared via root `.env` / `.env.example`
+- API metrics at `/metrics` (outside `/api` prefix)
+- Traces: OTLP HTTP to collector on `:4318`
+
+## When changing infra
+
+- Update `docs/09-docker-and-infrastructure.md` only if user requests doc changes
+- Keep port mappings consistent with `docs/README.md` port table
+- Don't break local dev: `docker compose up postgres redis` should still work for API-only dev
+
+## Observability code
+
+- API: Pino logger config, HTTP metrics interceptor, TypeORM pool metrics
+- Web: `instrumentation.mjs` loaded via `NODE_OPTIONS` in dev/preview scripts
+- Propagate trace context via `trace-headers.ts` on API calls
