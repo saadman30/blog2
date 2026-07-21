@@ -27,7 +27,7 @@ export function ClapButton({ postId, initialClaps = 0 }: ClapButtonProps) {
       });
       setClaps(result.claps);
     } catch {
-      setClaps((value) => value + 1);
+      // Keep the last known count when the API is unavailable.
     } finally {
       setPending(false);
     }

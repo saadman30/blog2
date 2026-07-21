@@ -161,21 +161,6 @@ export class PostsService {
     return sanitizeHtml(typeof html === 'string' ? html : String(html));
   }
 
-  async publishDuePosts(): Promise<number> {
-    const due = await this.postsRepository
-      .createQueryBuilder('post')
-      .where('post.status = :status', { status: PostStatus.SCHEDULED })
-      .andWhere('post.scheduledAt <= :now', { now: new Date() })
-      .getMany();
-
-    for (const post of due) {
-      post.status = PostStatus.PUBLISHED;
-      post.publishedAt = new Date();
-      await this.postsRepository.save(post);
-    }
-    return due.length;
-  }
-
   private assertScheduleValid(
     status: PostStatus,
     scheduledAt?: string | null,

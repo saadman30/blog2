@@ -63,9 +63,10 @@ npm run test:web
 
 | File | Focus |
 |------|--------|
-| `tests/api-client.test.ts` | fetch wrapper, errors, headers |
+| `tests/api-client.test.ts` | fetch wrapper, 401 refresh retry, errors, headers |
 | `tests/auth-store.test.ts` | set/clear/hydrate/SSR |
-| `tests/theme.test.ts` | theme helpers |
+| `tests/auth-hydrate.test.tsx` | AuthHydrate calls hydrateAuth on mount |
+| `tests/theme.test.ts` | theme helpers + `buildThemeBootScript` |
 | `tests/ssr-env.test.ts` | node env / no window |
 | `tests/content.test.ts` | TOC, dates, reading helpers |
 | `tests/cn.test.ts` | className merge |

@@ -43,7 +43,7 @@ export class AuthService {
     const user = this.usersRepository.create({
       email: dto.email.toLowerCase(),
       password,
-      role: dto.role ?? UserRole.EDITOR,
+      role: UserRole.EDITOR,
       twoFactorSecret: null,
       twoFactorEnabled: false,
     });

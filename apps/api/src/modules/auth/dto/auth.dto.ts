@@ -1,5 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
-import { UserRole } from '../../../database/entities';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
@@ -21,14 +20,4 @@ export class RegisterDto {
   @IsString()
   @MinLength(8)
   password!: string;
-
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
-}
-
-export class RefreshTokenDto {
-  @IsOptional()
-  @IsString()
-  refreshToken?: string;
 }

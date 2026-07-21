@@ -46,7 +46,7 @@ File: `user.entity.ts`
 | `id` | uuid PK | Auto-generated |
 | `email` | string, unique | Stored lowercased on register/login |
 | `password` | string | bcrypt hash (cost 12) |
-| `role` | enum | `ADMIN` or `EDITOR` |
+| `role` | enum | `ADMIN` or `EDITOR` — public register always creates `EDITOR` |
 | `twoFactorSecret` | string \| null | Used when 2FA enabled |
 | `twoFactorEnabled` | boolean | Default false |
 | `createdAt` / `updatedAt` | timestamps | |

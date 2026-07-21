@@ -1,24 +1,10 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import AppLayout from '../../layouts/AppLayout.astro';
 ---
 
-<BaseLayout title="Media — Back Office">
+<AppLayout title="Media — Back Office">
   <section class="admin-page">
     <h1>Media</h1>
-    <p>Upload images through <code>POST /api/media/upload</code>. Files are converted to WebP.</p>
+    <p>Preview — upload UI is not wired yet. Upload images through <code>POST /api/media/upload</code>. Files are converted to WebP.</p>
   </section>
-</BaseLayout>
-
-<style lang="scss">
-  .admin-page {
-    max-width: 48rem;
-    margin: 0 auto;
-    padding: $space-xl $space-lg;
-    @include stack($space-md);
-
-    h1 {
-      font-family: $font-display;
-      margin: 0;
-    }
-  }
-</style>
+</AppLayout>

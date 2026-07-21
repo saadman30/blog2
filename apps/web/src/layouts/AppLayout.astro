@@ -1,0 +1,30 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { AuthHydrate } from '../components/backoffice/AuthHydrate';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <AuthHydrate client:load />
+  <slot />
+</BaseLayout>
+
+<style lang="scss">
+  :global(.admin-page) {
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: $space-xl $space-lg;
+    @include stack($space-md);
+
+    h1 {
+      font-family: $font-display;
+      margin: 0;
+    }
+  }
+</style>

@@ -1,3 +1,5 @@
+import { authStore, setAuth } from '@/stores/auth-store';
+
 export interface ApiErrorBody {
   success: false;
   message: string | string[];
@@ -20,9 +22,36 @@ export function getApiBaseUrl(): string {
   return import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001/api';
 }
 
+type ApiFetchInit = RequestInit & { _retried?: boolean };
+
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    const payload = (await response.json().catch(() => null)) as
+      | { success: true; data: { accessToken: string } }
+      | ApiErrorBody
+      | null;
+    if (
+      !response.ok ||
+      !payload ||
+      payload.success === false ||
+      !('data' in payload) ||
+      !payload.data.accessToken
+    ) {
+      return null;
+    }
+    return payload.data.accessToken;
+  } catch {
+    return null;
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
-  init: RequestInit = {},
+  init: ApiFetchInit = {},
   accessToken?: string,
 ): Promise<T> {
   const { injectTraceHeaders } = await import('./trace-headers');
@@ -44,6 +73,17 @@ export async function apiFetch<T>(
     | { success: true; data: T }
     | ApiErrorBody
     | null;
+
+  if (response.status === 401 && !init._retried) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      const state = authStore.get();
+      if (state.user) {
+        setAuth(state.user, refreshed);
+      }
+      return apiFetch<T>(path, { ...init, _retried: true }, refreshed);
+    }
+  }
 
   if (!response.ok || !payload || payload.success === false) {
     const message =

@@ -1,6 +1,6 @@
 export type ThemeMode = 'light' | 'dark';
 
-const STORAGE_KEY = 'pcms-theme';
+export const THEME_STORAGE_KEY = 'pcms-theme';
 
 export function getLocalStorage(): Pick<Storage, 'getItem' | 'setItem'> | null {
   if (typeof window === 'undefined') {
@@ -29,7 +29,7 @@ export function getStoredTheme(
   if (!storage) {
     return null;
   }
-  const value = storage.getItem(STORAGE_KEY);
+  const value = storage.getItem(THEME_STORAGE_KEY);
   if (value === 'light' || value === 'dark') {
     return value;
   }
@@ -68,7 +68,7 @@ export function setTheme(
   root: Element | null = getDocumentRoot(),
 ): void {
   if (storage) {
-    storage.setItem(STORAGE_KEY, theme);
+    storage.setItem(THEME_STORAGE_KEY, theme);
   }
   applyTheme(theme, root);
 }
@@ -81,4 +81,9 @@ export function toggleTheme(
   const next: ThemeMode = current === 'dark' ? 'light' : 'dark';
   setTheme(next, storage, root);
   return next;
+}
+
+/** Inline boot script for `<head>` to prevent theme flash before hydration. */
+export function buildThemeBootScript(): string {
+  return `(function(){try{var k='${THEME_STORAGE_KEY}';var s=localStorage.getItem(k);var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=s==='light'||s==='dark'?s:d?'dark':'light';document.documentElement.classList.toggle('dark',t==='dark');}catch(e){}})();`;
 }

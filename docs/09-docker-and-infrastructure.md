@@ -116,8 +116,8 @@ docker compose -f docker/docker-compose.yml down
 
 - No reverse proxy (nginx/Caddy) in compose
 - No automatic migration step in API Dockerfile CMD
-- No dedicated volume for `./uploads` media files in compose (uploads inside container FS unless you add a volume)
-- Web build-time fetch of posts may see empty API during image build; blog index fallback may be baked in unless you rebuild when API has data
+- No dedicated volume for `./uploads` media files in compose (uploads inside container FS unless you add a volume; API serves them at `/uploads/*`)
+- Web build-time fetch of posts may see empty API during image build; set `PUBLIC_DEMO_MODE=true` for demo content in the image, or rebuild when API has data
 
 ---
 

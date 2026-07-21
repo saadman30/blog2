@@ -25,14 +25,15 @@ apps/web/
 ├── public/
 ├── tests/                   # Vitest suites
 └── src/
-    ├── env.d.ts             # PUBLIC_API_URL typing
+    ├── env.d.ts             # PUBLIC_API_URL, PUBLIC_DEMO_MODE typing
     ├── layouts/
     │   ├── BaseLayout.astro
+    │   ├── AppLayout.astro  # back-office shell + AuthHydrate
     │   └── BlogLayout.astro
     ├── pages/               # = routes
     ├── components/
     │   ├── ui/              # shadcn primitives
-    │   ├── backoffice/      # LoginForm, WriteForm
+    │   ├── backoffice/      # LoginForm, WriteForm, AuthHydrate
     │   └── *.tsx            # ThemeToggle, ClapButton, TOC, CopyCode
     ├── stores/
     │   └── auth-store.ts
@@ -57,14 +58,14 @@ Astro maps files under `src/pages` to URLs.
 |-----|------|----------------|
 | `/` | `pages/index.astro` | Home / brand hero + links |
 | `/portfolio` | `pages/portfolio.astro` | Static project cards |
-| `/blog` | `pages/blog/index.astro` | Post cards from API (demo fallback) |
+| `/blog` | `pages/blog/index.astro` | Post cards from API; error alert if fetch fails (demo only when `PUBLIC_DEMO_MODE=true`) |
 | `/blog/:slug` | `pages/blog/[slug].astro` | Post body + TOC + tools |
 | `/blog/tag/:tag` | `pages/blog/tag/[tag].astro` | Tag listing stubs |
 | `/app` | `pages/app/index.astro` | Back office home + login |
 | `/app/write` | `pages/app/write.astro` | Create post form |
-| `/app/posts` | `pages/app/posts.astro` | Stub “manage via API” |
-| `/app/media` | `pages/app/media.astro` | Stub upload notes |
-| `/app/settings` | `pages/app/settings.astro` | Stub settings copy |
+| `/app/posts` | `pages/app/posts.astro` | Preview — admin table not wired |
+| `/app/media` | `pages/app/media.astro` | Preview — upload UI not wired |
+| `/app/settings` | `pages/app/settings.astro` | Preview — settings forms not wired |
 
 There is **no** `/app/insights` page in this codebase.
 
@@ -79,10 +80,17 @@ Site chrome:
 - HTML shell
 - Google fonts (Source Sans 3 + Fraunces — also mirrored in Tailwind config)
 - Global SCSS import
-- Inline script to apply dark class early (avoid theme flash)
+- Inline script from `buildThemeBootScript()` in `utils/theme.ts` (avoids theme flash; single source of truth with toggle helpers)
 - Header nav + footer
 - Slot for page content
 - `ThemeToggle` React island
+
+### `AppLayout.astro`
+
+Back-office wrapper around `BaseLayout`:
+
+- Mounts `AuthHydrate` (`client:load`) to call `hydrateAuth()` on page load
+- Shared `.admin-page` styles for `/app/posts`, `/app/media`, `/app/settings`, `/app/write`
 
 ### `BlogLayout.astro`
 
@@ -102,7 +110,9 @@ In frontmatter (runs at build time / request time in `astro dev`):
 1. Read `PUBLIC_API_URL`
 2. `fetch(`${apiUrl}/posts`)`
 3. Expect `{ success: true, data: PostSummary[] }`
-4. On network/HTTP failure → replace with a hardcoded demo post so the page still builds
+4. On network/HTTP failure:
+   - If `PUBLIC_DEMO_MODE=true` → inject a demo post so builds succeed offline
+   - Otherwise → show an error alert; post list stays empty
 
 Cards link to `/blog/${slug}` and tag badges to `/blog/tag/${tag}`.
 
@@ -129,7 +139,7 @@ Astro ships HTML first. Components marked `client:load` hydrate in the browser.
 |-----------|------|
 | `ThemeToggle` | Toggle light/dark; persists `pcms-theme` in localStorage |
 | `TableOfContents` | Renders heading links from `buildTableOfContents(markdown)` |
-| `ClapButton` | Optimistic UI; `POST /analytics/:postId/clap` |
+| `ClapButton` | Shows clap count; `POST /analytics/:postId/clap` (keeps last count on API error) |
 | `CopyCodeButton` | Copies a code string to clipboard |
 | `LoginForm` | `POST /auth/login` → `setAuth` |
 | `WriteForm` | `POST /posts` with Bearer token |
@@ -160,6 +170,7 @@ File: `utils/api-client.ts`
 getApiBaseUrl() → PUBLIC_API_URL or http://localhost:3001/api
 apiFetch(path, init?, accessToken?)
   → fetch(base + path, { credentials: 'include', headers... })
+  → on 401 (once): POST /auth/refresh, update auth store, retry
   → unwrap payload.data
   → or throw ApiClientError
 ```
@@ -239,7 +250,7 @@ Used by blog pages:
 - `buildTableOfContents` — parse markdown headings into TOC items
 - reading-time style helpers covered by tests
 
-Theme helpers (`utils/theme.ts`) read/write class + localStorage.
+Theme helpers (`utils/theme.ts`) read/write class + localStorage. `buildThemeBootScript()` generates the inline `<head>` script used by `BaseLayout`.
 
 ---
 
@@ -247,11 +258,11 @@ Theme helpers (`utils/theme.ts`) read/write class + localStorage.
 
 | Page | Status |
 |------|--------|
-| `/app` login | Working against API |
+| `/app` login | Working against API; session hydrates on load |
 | `/app/write` | Working create against API |
-| `/app/posts` | Stub text |
-| `/app/media` | Stub text (API upload exists) |
-| `/app/settings` | Stub text |
+| `/app/posts` | Preview copy (nav labeled “preview”) |
+| `/app/media` | Preview copy (API upload exists) |
+| `/app/settings` | Preview copy |
 
 No client-side route guard; security is enforced by the API when you call protected endpoints.
 

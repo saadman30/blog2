@@ -59,9 +59,9 @@ This page is the honest companion to the observability docs: what works out of t
 
 **Fix direction:** Browser OTEL SDK or pass trace context from SSR props.
 
-### 5. Dashboard metrics without code
+### 5. Future application metrics (not in dashboard)
 
-These PromQL queries exist in **PCMS Overview** but **no code registers** these metrics yet:
+These metric names were considered for **PCMS Overview** but are **not registered in API code** and **panels were removed** from the dashboard until implemented:
 
 | Metric | Intended meaning |
 |--------|------------------|
@@ -69,7 +69,7 @@ These PromQL queries exist in **PCMS Overview** but **no code registers** these 
 | `scheduled_posts_executed_total` | BullMQ scheduler published count |
 | `claps_rate_limit_blocks_total` | Throttled clap requests |
 
-Panels will show **No data** until you increment counters in the right services.
+Add counters in the relevant services before re-adding Grafana panels.
 
 ### 6. API Compose service has no healthcheck
 
@@ -176,7 +176,7 @@ Metrics: still at http://localhost:3001/metrics (Prometheus optional).
 
 1. **Promtail** → Loki (unlock log panels immediately)
 2. **Tempo** + Collector exporter (unlock trace UI in Grafana)
-3. **Counters** for scheduler / claps / cache (unlock remaining dashboard panels)
+3. **Counters** for scheduler / claps / cache (then add Grafana panels back)
 4. **Compose healthcheck** on API readiness
 5. **Web Docker** tracing import if you need SSR trace continuity in prod
 

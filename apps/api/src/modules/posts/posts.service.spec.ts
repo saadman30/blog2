@@ -278,17 +278,4 @@ describe('PostsService', () => {
     await service.update('p1', { status: PostStatus.SCHEDULED });
     expect(schedulerQueue.add).toHaveBeenCalled();
   });
-
-  it('publishes due posts', async () => {
-    const due = [{ ...basePost, status: PostStatus.SCHEDULED }];
-    const qb = {
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue(due),
-    };
-    postsRepository.createQueryBuilder.mockReturnValue(
-      qb as unknown as SelectQueryBuilder<PostEntity>,
-    );
-    await expect(service.publishDuePosts()).resolves.toBe(1);
-  });
 });

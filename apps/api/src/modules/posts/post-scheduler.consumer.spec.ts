@@ -84,38 +84,4 @@ describe('PostSchedulerConsumer', () => {
       } as Job<PublishPostJob>),
     ).resolves.toEqual({ published: false });
   });
-
-  it('publishes all due posts via publish-due job', async () => {
-    const qb = {
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([{ ...post }, { ...post, id: 'p2' }]),
-    };
-    postsRepository.createQueryBuilder.mockReturnValue(
-      qb as unknown as SelectQueryBuilder<PostEntity>,
-    );
-    await expect(
-      consumer.process({
-        name: 'publish-due',
-        data: { postId: '' },
-      } as Job<PublishPostJob>),
-    ).resolves.toEqual({ published: true });
-  });
-
-  it('returns published false when no due posts', async () => {
-    const qb = {
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-    };
-    postsRepository.createQueryBuilder.mockReturnValue(
-      qb as unknown as SelectQueryBuilder<PostEntity>,
-    );
-    await expect(
-      consumer.process({
-        name: 'publish-due',
-        data: { postId: '' },
-      } as Job<PublishPostJob>),
-    ).resolves.toEqual({ published: false });
-  });
 });

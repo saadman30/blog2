@@ -38,7 +38,7 @@ They talk over HTTP. The web app calls `http://localhost:3001/api/...`. The API 
 - When a page needs live data (blog list, login, clap), the **browser or Astro build** calls the **API**.
 - The API reads/writes **PostgreSQL**.
 - For **scheduled posts**, the API puts a job in **Redis** (via BullMQ). A worker later flips the post to published.
-- Uploaded images are processed with **Sharp**, saved as **WebP** under `./uploads`, and a row is stored in the `media` table.
+- Uploaded images are processed with **Sharp**, saved as **WebP** under `./uploads`, served at `/uploads/*` by the API, and tracked in the `media` table.
 
 ---
 

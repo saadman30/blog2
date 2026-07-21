@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   applyTheme,
+  buildThemeBootScript,
   getDocumentRoot,
   getLocalStorage,
   getMatchMedia,
@@ -8,6 +9,7 @@ import {
   getStoredTheme,
   resolveTheme,
   setTheme,
+  THEME_STORAGE_KEY,
   toggleTheme,
 } from '@/utils/theme';
 
@@ -37,9 +39,9 @@ describe('theme utils', () => {
   it('reads stored theme', () => {
     expect(getStoredTheme(null)).toBeNull();
     expect(getStoredTheme()).toBeNull();
-    window.localStorage.setItem('pcms-theme', 'dark');
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'dark');
     expect(getStoredTheme()).toBe('dark');
-    window.localStorage.setItem('pcms-theme', 'nope');
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'nope');
     expect(getStoredTheme()).toBeNull();
   });
 
@@ -67,8 +69,13 @@ describe('theme utils', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true);
     setTheme('light', null, null);
     setTheme('light');
-    expect(window.localStorage.getItem('pcms-theme')).toBe('light');
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
     expect(toggleTheme('light')).toBe('dark');
     expect(toggleTheme('dark', null, null)).toBe('light');
+  });
+
+  it('builds inline theme boot script', () => {
+    expect(buildThemeBootScript()).toContain(THEME_STORAGE_KEY);
+    expect(buildThemeBootScript()).toContain('prefers-color-scheme');
   });
 });

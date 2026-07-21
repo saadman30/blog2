@@ -27,16 +27,28 @@ Later API calls from WriteForm:
 Authorization: Bearer <accessToken>
 ```
 
-Refresh (not wired in UI yet, but API supports it):
+Refresh (wired in `apiFetch`):
 
 ```text
-Browser
+Browser island calls apiFetch → GET/POST protected route
+  → 401 Unauthorized
   → POST /api/auth/refresh   (cookie sent automatically)
 API
   → verify refresh JWT
   → issue new tokens
   → set new refresh cookie
   → return { accessToken }
+Browser
+  → setAuth(user, newAccessToken) if user in store
+  → retry original request once
+```
+
+Session restore on `/app` page load:
+
+```text
+AuthHydrate (client:load)
+  → hydrateAuth() reads sessionStorage
+  → authStore repopulated before WriteForm checks token
 ```
 
 ---
@@ -105,8 +117,9 @@ If Redis is down, enqueue fails and create/update of scheduled posts fails.
 
 ```text
 ClapButton (client island)
-  → optimistic local +1
   → POST /api/analytics/:postId/clap  { count?: number }
+  → on success: update displayed count from API response
+  → on failure: keep last known count (no fake increment)
 AnalyticsService.clap
   → clamp count to 1..50
   → getOrCreate analytics for PUBLISHED post
@@ -130,6 +143,8 @@ MediaService.upload
   → return { url: "/uploads/...", ... }
 ```
 
+Files are readable at `GET http://localhost:3001/uploads/<uuid>.webp` (served by API static assets, not under `/api`).
+
 Delete (ADMIN): remove file (ignore missing) + delete row.
 
 ---
@@ -150,17 +165,17 @@ Compose / ops can use these for readiness.
 
 ---
 
-## Flow G — Blog index with API down
+## Flow G — Blog index when API is down
 
 ```text
 astro build / astro dev loads /blog
   → fetch PUBLIC_API_URL/posts
   → network error OR non-OK
-  → catch → inject demo post "Welcome to PCMS"
-Page still renders
+  → if PUBLIC_DEMO_MODE=true → inject demo post "Welcome to PCMS"
+  → else → render error alert; post list empty
 ```
 
-This keeps SSG builds from hard-failing when the API is offline.
+Set `PUBLIC_DEMO_MODE=true` in `.env` when you want offline/demo builds without a running API.
 
 ---
 

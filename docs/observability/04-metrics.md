@@ -107,17 +107,17 @@ Reads the underlying `pg` pool via `dataSource.driver.master`.
 
 ---
 
-## Metrics referenced in dashboards but NOT in code yet
+## Future metrics (not implemented)
 
-Grafana dashboard **PCMS Overview** also queries these names:
+These names are **not registered** in API code. They were removed from the **PCMS Overview** dashboard until counters exist:
 
-| Metric | Panel | Status |
-|--------|-------|--------|
-| `redis_cache_hits_total` / `redis_cache_misses_total` | Redis cache hit ratio | **Not implemented** in API code |
-| `scheduled_posts_executed_total` | Scheduled posts executed | **Not implemented** |
-| `claps_rate_limit_blocks_total` | Claps rate limit blocks | **Not implemented** |
+| Metric | Intended use |
+|--------|----------------|
+| `redis_cache_hits_total` / `redis_cache_misses_total` | Redis cache hit ratio |
+| `scheduled_posts_executed_total` | Scheduled posts executed |
+| `claps_rate_limit_blocks_total` | Claps rate limit blocks |
 
-Those panels will show **no data** until you add counters in the relevant services (scheduler consumer, analytics, cache layer). See [07 — Gaps](./07-gaps-and-runbook.md).
+See [07 — Gaps](./07-gaps-and-runbook.md) for when to add them back to Grafana.
 
 ---
 

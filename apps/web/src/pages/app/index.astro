@@ -1,18 +1,20 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { LoginForm } from '../../components/backoffice/LoginForm';
+import { AuthHydrate } from '../../components/backoffice/AuthHydrate';
 ---
 
 <BaseLayout title="Back Office — PCMS" description="Secure editorial portal.">
+  <AuthHydrate client:load />
   <section class="app-home">
     <h1>Back Office</h1>
     <p>Sign in to manage posts, media, and analytics.</p>
     <LoginForm client:load />
     <nav class="app-home__links">
-      <a href="/app/posts">Posts</a>
       <a href="/app/write">Write</a>
-      <a href="/app/media">Media</a>
-      <a href="/app/settings">Settings</a>
+      <a href="/app/posts">Posts <span class="app-home__preview">(preview)</span></a>
+      <a href="/app/media">Media <span class="app-home__preview">(preview)</span></a>
+      <a href="/app/settings">Settings <span class="app-home__preview">(preview)</span></a>
     </nav>
   </section>
 </BaseLayout>
@@ -34,6 +36,12 @@ import { LoginForm } from '../../components/backoffice/LoginForm';
       flex-wrap: wrap;
       gap: $space-md;
       font-weight: 600;
+    }
+
+    &__preview {
+      font-weight: 400;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.875rem;
     }
   }
 </style>

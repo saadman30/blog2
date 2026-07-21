@@ -13,7 +13,7 @@ This page explains **who can call what**, and **how identity moves** between bro
 
    `Authorization: Bearer <accessToken>`
 
-5. When the access token expires, the client can call `POST /api/auth/refresh`. The browser automatically sends the cookie (`credentials: 'include'`). The API returns a new access token (and rotates the refresh cookie).
+5. When the access token expires, `apiFetch` calls `POST /api/auth/refresh` once and retries the original request. The browser automatically sends the cookie (`credentials: 'include'`). The API returns a new access token (and rotates the refresh cookie).
 
 6. **Logout** clears the refresh cookie.
 
@@ -42,6 +42,14 @@ Default lifetimes from env: access `15m`, refresh `7d`.
 
 - Passwords hashed with **bcrypt**, cost factor **12**
 - Never returned from API (`sanitizeUser` strips `password` and `twoFactorSecret`)
+
+---
+
+## Registration
+
+`POST /api/auth/register` accepts `email` and `password` only. New accounts are always assigned **`EDITOR`**. Clients cannot self-assign `ADMIN` via the register body (`forbidNonWhitelisted` rejects unknown fields).
+
+Promoting users to `ADMIN` requires a database update or a future admin-only endpoint — there is no seed script yet.
 
 ---
 
@@ -152,7 +160,9 @@ Helpers:
 - `hydrateAuth` — reload from sessionStorage
 - `isAuthenticated`
 
-**Current gap:** `hydrateAuth()` is implemented and tested, but **no page currently calls it on load**. After a full refresh, the in-memory store is empty until something hydrates or the user logs in again. sessionStorage still has values, so wiring hydrate on `/app` pages would restore the session.
+**Session restore:** `AuthHydrate` (`components/backoffice/AuthHydrate.tsx`) runs on every `/app/*` page via `AppLayout.astro` (and on `/app` login home). After a full refresh, sessionStorage values are loaded back into the nanostore.
+
+**Token refresh:** `apiFetch` (`utils/api-client.ts`) retries once on HTTP 401 by calling `POST /auth/refresh`, then updates the store if a user is present.
 
 Back-office routes (`/app/*`) are **not server-guarded**. Anyone can open `/app/write`. The write form fails with “Authentication required” if there is no token.
 

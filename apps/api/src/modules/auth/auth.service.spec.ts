@@ -69,7 +69,7 @@ describe('AuthService', () => {
     expect(result.tokens.accessToken).toBe('token');
   });
 
-  it('registers with explicit role', async () => {
+  it('always assigns editor role on register', async () => {
     usersRepository.findOne.mockResolvedValue(null);
     (bcrypt.hash as jest.Mock).mockResolvedValue('hashed');
     usersRepository.create.mockImplementation((data) => data as UserEntity);
@@ -77,9 +77,11 @@ describe('AuthService', () => {
     const result = await service.register({
       email: 'admin@b.com',
       password: 'password1',
-      role: UserRole.ADMIN,
     });
-    expect(result.user.role).toBe(UserRole.ADMIN);
+    expect(result.user.role).toBe(UserRole.EDITOR);
+    expect(usersRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ role: UserRole.EDITOR }),
+    );
   });
 
   it('rejects duplicate email', async () => {

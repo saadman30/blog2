@@ -23,9 +23,6 @@ export class PostSchedulerConsumer extends WorkerHost {
   }
 
   async process(job: Job<PublishPostJob>): Promise<{ published: boolean }> {
-    if (job.name === 'publish-due') {
-      return this.publishDue();
-    }
     return this.publishOne(job.data.postId);
   }
 
@@ -42,21 +39,5 @@ export class PostSchedulerConsumer extends WorkerHost {
     await this.postsRepository.save(post);
     this.logger.log(`Published scheduled post ${postId}`);
     return { published: true };
-  }
-
-  private async publishDue(): Promise<{ published: boolean }> {
-    const due = await this.postsRepository
-      .createQueryBuilder('post')
-      .where('post.status = :status', { status: PostStatus.SCHEDULED })
-      .andWhere('post.scheduledAt <= :now', { now: new Date() })
-      .getMany();
-
-    for (const post of due) {
-      post.status = PostStatus.PUBLISHED;
-      post.publishedAt = new Date();
-      await this.postsRepository.save(post);
-      this.logger.log(`Published scheduled post ${post.id}`);
-    }
-    return { published: due.length > 0 };
   }
 }

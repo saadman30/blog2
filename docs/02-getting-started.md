@@ -65,6 +65,7 @@ Root `.env` is used by local API and by Docker Compose (`env_file` points at `.e
 | Variable | Meaning |
 |----------|---------|
 | `PUBLIC_API_URL` | Base URL Astro/browser use for API calls | `http://localhost:3001/api` |
+| `PUBLIC_DEMO_MODE` | When `true`, blog index uses a demo post if the API is unreachable at build/dev time | `false` |
 
 #### Observability
 
@@ -146,15 +147,15 @@ Astro serves on port **4321** (`astro.config.mjs`).
 
 ## 6. First useful API calls
 
-### Register an editor/admin
+### Register an editor
 
 ```bash
 curl -X POST http://localhost:3001/api/auth/register \
   -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"long-enough-password","role":"ADMIN"}'
+  -d '{"email":"you@example.com","password":"long-enough-password"}'
 ```
 
-Response includes `accessToken` + `user`. A `refreshToken` cookie is also set (path `/api/auth`).
+Response includes `accessToken` + `user` (role is always `EDITOR`). A `refreshToken` cookie is also set (path `/api/auth`).
 
 ### Login
 
@@ -233,8 +234,9 @@ See [10 — Testing](./10-testing.md).
 |---------|----------------|
 | API fails on boot | Postgres/Redis not running or wrong host |
 | CORS errors in browser | `CORS_ORIGIN` ≠ web origin (must be `http://localhost:4321`) |
-| Blog list empty / demo only | API down when Astro fetched `/posts`, or no published posts |
-| Write form says “Authentication required” | Not logged in on `/app`, or page refresh without calling `hydrateAuth` |
+| Blog list empty | API down when Astro fetched `/posts`, or no published posts |
+| Blog build shows error alert | API unreachable and `PUBLIC_DEMO_MODE` is not `true` — start API and rebuild, or set demo mode |
+| Write form says “Authentication required” | Not logged in on `/app`, or sessionStorage cleared |
 | Upload fails | `MEDIA_LOCAL_PATH` not writable |
 
 ---

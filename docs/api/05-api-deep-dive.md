@@ -41,14 +41,15 @@ Every feature module typically has:
 
 ## Bootstrap (`main.ts`) step by step
 
-1. `NestFactory.create(AppModule)`
+1. `NestFactory.create(AppModule)` (Express adapter)
 2. Read `ConfigService`
-3. `setGlobalPrefix('api')` → all routes start with `/api`
-4. `helmet()`
-5. `cookieParser()`
-6. `enableCors(...)` using `app.corsOrigin`
-7. Global `ValidationPipe`
-8. `listen(port, host)` — defaults `3001` / `0.0.0.0`
+3. `useStaticAssets(MEDIA_LOCAL_PATH, { prefix: '/uploads/' })` — serve uploaded WebP files
+4. `setGlobalPrefix('api')` → all routes start with `/api`
+5. `helmet()`
+6. `cookieParser()`
+7. `enableCors(...)` using `app.corsOrigin`
+8. Global `ValidationPipe`
+9. `listen(port, host)` — defaults `3001` / `0.0.0.0`
 
 ---
 
@@ -85,7 +86,7 @@ Access pattern in code: `config.get('database.host')`.
 
 | Method | What it does |
 |--------|----------------|
-| `register` | Reject duplicate email; hash password; default role EDITOR; issue tokens |
+| `register` | Reject duplicate email; hash password; assign role **EDITOR** (not client-selectable); issue tokens |
 | `login` | Verify password; optional 2FA; issue tokens |
 | `refresh` | Verify refresh JWT with refresh secret; re-issue pair |
 | `validateUserById` | Used by JWT strategy after decoding access token |
@@ -155,9 +156,8 @@ Queue name constant: `POST_SCHEDULER_QUEUE = 'post-scheduler'`.
 `post-scheduler.consumer.ts`:
 
 - Listens to BullMQ queue
-- Job payload: `{ postId }`
-- Publishes the post if still scheduled and due
-- Also can publish all due posts in batch helpers
+- Job name: `publish-post`; payload: `{ postId }`
+- Publishes the post if still `SCHEDULED` and `scheduledAt` is due
 
 **Redis is required** for scheduling to work. Without Redis, creating a scheduled post will fail when enqueueing.
 
@@ -196,7 +196,7 @@ Queue name constant: `POST_SCHEDULER_QUEUE = 'post-scheduler'`.
 
 **S3 env vars exist in config but are not used by the current upload implementation** — storage is local filesystem.
 
-There is no Nest static file middleware wired in `main.ts` in the current code to serve `/uploads` publicly; serving uploaded files may need an extra static route or reverse proxy in a full deployment.
+Uploaded files are served at **`http://localhost:3001/uploads/<key>`** via Express static assets in `main.ts` (not under the `/api` prefix). In production behind a reverse proxy, you may still want a CDN or dedicated volume for persistence.
 
 ---
 

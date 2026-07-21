@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { formatDate } from '../utils/content';
 
 const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001/api';
+const demoMode = import.meta.env.PUBLIC_DEMO_MODE === 'true';
 
 interface PostSummary {
   id: string;
@@ -16,25 +17,38 @@ interface PostSummary {
   tags: string[];
 }
 
+const demoPosts: PostSummary[] = [
+  {
+    id: 'demo',
+    title: 'Welcome to PCMS',
+    slug: 'welcome-to-pcms',
+    summary: 'A starter essay about the portfolio content system.',
+    readingTime: 3,
+    publishedAt: new Date().toISOString(),
+    tags: ['meta'],
+  },
+];
+
 let posts: PostSummary[] = [];
+let loadError: string | null = null;
+
 try {
   const response = await fetch(`${apiUrl}/posts`);
   if (response.ok) {
     const payload = (await response.json()) as { success: true; data: PostSummary[] };
     posts = payload.data ?? [];
+  } else if (demoMode) {
+    posts = demoPosts;
+  } else {
+    loadError = `Could not load posts (HTTP ${response.status}).`;
   }
 } catch {
-  posts = [
-    {
-      id: 'demo',
-      title: 'Welcome to PCMS',
-      slug: 'welcome-to-pcms',
-      summary: 'A starter essay about the portfolio content system.',
-      readingTime: 3,
-      publishedAt: new Date().toISOString(),
-      tags: ['meta'],
-    },
-  ];
+  if (demoMode) {
+    posts = demoPosts;
+  } else {
+    loadError =
+      'Could not reach the API. Start the API server and rebuild, or set PUBLIC_DEMO_MODE=true for demo content.';
+  }
 }
 ---
 
@@ -44,6 +58,13 @@ try {
       <h1>Blog</h1>
       <p>Long-form writing on product, architecture, and craft.</p>
     </header>
+    {
+      loadError ? (
+        <p class="blog-index__error" role="alert">
+          {loadError}
+        </p>
+      ) : null
+    }
     <div class="blog-index__grid">
       {
         posts.map((post) => (
@@ -88,6 +109,15 @@ try {
         font-size: clamp(2rem, 5vw, 3rem);
         margin: 0;
       }
+    }
+
+    &__error {
+      margin: 0;
+      padding: $space-md;
+      border: 1px solid hsl(var(--destructive));
+      border-radius: 0.375rem;
+      color: hsl(var(--destructive));
+      background: hsl(var(--destructive) / 0.08);
     }
 
     &__grid {

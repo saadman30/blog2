@@ -15,10 +15,12 @@ Use this page so docs don’t oversell the code.
 | Posts CRUD + publish + schedule consumer | Posts module + BullMQ |
 | Markdown → sanitized HTML on `GET /posts/:slug` | `renderHtml` |
 | Analytics views/claps/summary | Analytics module |
-| Media upload to local WebP | Media service |
+| Media upload to local WebP + serve at `/uploads` | Media service + `main.ts` static assets |
 | Health checks | Health module |
 | Web login + write form | React islands calling API |
-| Blog index fetch with demo fallback | `blog/index.astro` |
+| Auth session hydrate on `/app` | `AuthHydrate` in `AppLayout.astro` |
+| Token auto-refresh on 401 | `apiFetch` → `POST /auth/refresh` |
+| Blog index fetch from API | `blog/index.astro` (error alert if API down; demo via `PUBLIC_DEMO_MODE`) |
 | Theme toggle, TOC, clap button, copy button | Islands present |
 | Docker Compose stack | postgres/redis/api/web |
 
@@ -30,14 +32,11 @@ Use this page so docs don’t oversell the code.
 |------|-------------|----------------|
 | Blog post pages | One static demo slug in `getStaticPaths` | Fetch all published posts from API at build time; regenerate on publish |
 | Tag pages | Placeholder routes | Real filtered listing UI from API |
-| `/app/posts` | Copy + link | Admin table calling `GET /posts/admin` |
-| `/app/media` | Copy | Upload UI calling `POST /media/upload` |
-| `/app/settings` | Copy about JWT/2FA | Real settings forms |
-| Auth hydrate | `hydrateAuth` implemented | Call it on `/app` layout mount |
-| Refresh token in UI | API + `credentials:'include'` | Auto-refresh when access token expires |
+| `/app/posts` | Preview copy | Admin table calling `GET /posts/admin` |
+| `/app/media` | Preview copy | Upload UI calling `POST /media/upload` |
+| `/app/settings` | Preview copy about JWT/2FA | Real settings forms |
 | 2FA | Entity + login check + `enableTwoFactor` service | HTTP endpoints + real TOTP + settings UI |
 | S3 config | Env vars loaded | Actual S3 upload adapter (still local disk) |
-| Serving `/uploads` | Files written to disk | Static file route / CDN / volume + reverse proxy |
 | Comments | DB table + entity | Module, moderation API, web UI |
 | Portfolio page | Static cards | Not API-driven |
 | Seeds | Empty folder | First admin user seed script |
@@ -82,7 +81,7 @@ Do not expect in `apps/web`:
 | Grafana dashboards | ✅ HTTP/pool panels work |
 | Loki log panels | ⚠️ Loki runs; no log shipper yet |
 | Trace UI in Grafana | ⚠️ Collector logs only |
-| Dashboard metrics for scheduler/claps/cache | ❌ queries exist, counters not in code |
+| Future dashboard metrics (scheduler/claps/cache) | ❌ not in code; panels removed from overview dashboard until implemented |
 
 Full detail: [observability/07-gaps-and-runbook.md](./observability/07-gaps-and-runbook.md).
 
@@ -96,6 +95,7 @@ Full detail: [observability/07-gaps-and-runbook.md](./observability/07-gaps-and-
 | Env defaults | `config/configuration.ts` + `.env.example` |
 | Public page | `apps/web/src/pages/...` |
 | Interactive widget | `apps/web/src/components/*.tsx` + `client:load` |
+| Back-office shell | `apps/web/src/layouts/AppLayout.astro` |
 | Design tokens | `styles/global.scss`, `_variables.scss`, `tailwind.config.mjs` |
 | API base URL | `PUBLIC_API_URL` |
 | Compose ports | `docker/docker-compose.yml` |

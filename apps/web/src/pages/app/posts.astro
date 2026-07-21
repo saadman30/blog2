@@ -1,25 +1,10 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import AppLayout from '../../layouts/AppLayout.astro';
 ---
 
-<BaseLayout title="Posts — Back Office">
+<AppLayout title="Posts — Back Office">
   <section class="admin-page">
     <h1>Posts</h1>
-    <p>Manage drafts, schedules, and published articles via the API.</p>
-    <p><a href="/app/write">Create a post</a></p>
+    <p>Preview — admin table UI is not wired yet. Manage drafts via the API or <a href="/app/write">create a post</a>.</p>
   </section>
-</BaseLayout>
-
-<style lang="scss">
-  .admin-page {
-    max-width: 48rem;
-    margin: 0 auto;
-    padding: $space-xl $space-lg;
-    @include stack($space-md);
-
-    h1 {
-      font-family: $font-display;
-      margin: 0;
-    }
-  }
-</style>
+</AppLayout>

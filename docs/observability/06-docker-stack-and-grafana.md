@@ -100,11 +100,10 @@ JSON files in `docker/grafana/dashboards/`:
 | Section | Panels |
 |---------|--------|
 | Application Health | Request rate (RPS), latency p95/p99, error rate % |
-| Infrastructure & Database | TypeORM pool, Node heap/RSS, Redis cache hit ratio* |
-| Application Metrics | Scheduled posts executed*, claps rate limit blocks* |
+| Infrastructure & Database | TypeORM pool, Node heap/RSS |
 | Live Structured Logs | Loki log stream with trace_id in line format |
 
-\* Panels marked with * query metrics **not yet implemented** in API code — they will stay empty until you add those counters.
+Future metrics (scheduler, claps rate limit, Redis cache) are documented in [04 — Metrics](./04-metrics.md) but **not** shown until implemented in code.
 
 ### PCMS API Observability (`pcms-api-observability.json`)
 

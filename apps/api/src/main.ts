@@ -1,16 +1,21 @@
 import { RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import * as path from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   const config = app.get(ConfigService);
+
+  const mediaLocalPath = config.get<string>('media.localPath') ?? './uploads';
+  app.useStaticAssets(path.resolve(mediaLocalPath), { prefix: '/uploads/' });
 
   app.setGlobalPrefix('api', {
     exclude: [
