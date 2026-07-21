@@ -35,3 +35,10 @@ export const mediaConfig = registerAs('media', () => ({
   s3Region: process.env.S3_REGION ?? 'auto',
   localPath: process.env.MEDIA_LOCAL_PATH ?? './uploads',
 }));
+
+export const telemetryConfig = registerAs('telemetry', () => ({
+  serviceName: process.env.OTEL_SERVICE_NAME ?? 'pcms-api',
+  otlpEndpoint:
+    process.env.OTEL_EXPORTER_OTLP_ENDPOINT ??
+    'http://localhost:4318/v1/traces',
+}));

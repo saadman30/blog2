@@ -1,22 +1,31 @@
+import { RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
   const config = app.get(ConfigService);
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: [
+      { path: 'metrics', method: RequestMethod.GET },
+      { path: 'health/liveness', method: RequestMethod.GET },
+      { path: 'health/readiness', method: RequestMethod.GET },
+    ],
+  });
   app.use(helmet());
   app.use(cookieParser());
   app.enableCors({
     origin: config.get<string>('app.corsOrigin'),
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'traceparent', 'tracestate'],
   });
   app.useGlobalPipes(
     new ValidationPipe({

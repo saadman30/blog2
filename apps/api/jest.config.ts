@@ -10,6 +10,7 @@ const config: Config = {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/main.ts',
+    '!src/tracing.ts',
     '!src/app.module.ts',
     '!src/**/*.module.ts',
     '!src/**/*.dto.ts',
@@ -19,6 +20,8 @@ const config: Config = {
     '!src/database/migrations/**',
     '!src/database/seeds/**',
     '!src/config/typeorm.data-source.ts',
+    '!src/common/metrics/metrics.providers.ts',
+    '!src/common/metrics/metrics.constants.ts',
   ],
   coverageDirectory: './coverage',
   testEnvironment: 'node',

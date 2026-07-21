@@ -36,6 +36,8 @@ services:
       REDIS_HOST: redis
       API_PORT: 3001
       CORS_ORIGIN: http://localhost:4321
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_SERVICE_NAME: pcms-api
     ports:
       - '3001:3001'
     depends_on:
@@ -50,11 +52,64 @@ services:
       dockerfile: docker/Dockerfile.web
       args:
         PUBLIC_API_URL: http://localhost:3001/api
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_SERVICE_NAME: pcms-web
     ports:
       - '4321:4321'
     depends_on:
       api:
         condition: service_started
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.120.0
+    command: ['--config=/etc/otel-collector-config.yml']
+    volumes:
+      - ./otel-collector/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - '4317:4317'
+      - '4318:4318'
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - '9090:9090'
+    depends_on:
+      api:
+        condition: service_started
+
+  loki:
+    image: grafana/loki:3.4.2
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - '3100:3100'
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - '3000:3000'
+    depends_on:
+      - prometheus
+      - loki
+
 volumes:
   postgres_data:
+  prometheus_data:
+  loki_data:
+  grafana_data:

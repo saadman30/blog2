@@ -4,6 +4,7 @@ import {
   jwtConfig,
   mediaConfig,
   redisConfig,
+  telemetryConfig,
 } from './configuration';
 
 describe('configuration', () => {
@@ -94,5 +95,21 @@ describe('configuration', () => {
     expect(jwtConfig().accessExpiresIn).toBe('15m');
     expect(mediaConfig().s3Endpoint).toBe('');
     expect(databaseConfig().host).toBe('localhost');
+  });
+
+  it('loads telemetry defaults and overrides', () => {
+    delete process.env.OTEL_SERVICE_NAME;
+    delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+    expect(telemetryConfig()).toEqual({
+      serviceName: 'pcms-api',
+      otlpEndpoint: 'http://localhost:4318/v1/traces',
+    });
+
+    process.env.OTEL_SERVICE_NAME = 'custom-api';
+    process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://collector:4318/v1/traces';
+    expect(telemetryConfig()).toEqual({
+      serviceName: 'custom-api',
+      otlpEndpoint: 'http://collector:4318/v1/traces',
+    });
   });
 });

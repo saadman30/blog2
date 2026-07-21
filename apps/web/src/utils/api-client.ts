@@ -25,7 +25,8 @@ export async function apiFetch<T>(
   init: RequestInit = {},
   accessToken?: string,
 ): Promise<T> {
-  const headers = new Headers(init.headers);
+  const { injectTraceHeaders } = await import('./trace-headers');
+  const headers = injectTraceHeaders(new Headers(init.headers));
   if (!headers.has('Content-Type') && init.body) {
     headers.set('Content-Type', 'application/json');
   }

@@ -4,12 +4,15 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { LoggerModule } from 'nestjs-pino';
 import {
   appConfig,
   databaseConfig,
   jwtConfig,
   mediaConfig,
   redisConfig,
+  telemetryConfig,
 } from './config/configuration';
 import {
   AnalyticsEntity,
@@ -20,8 +23,12 @@ import {
 } from './database/entities';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { HttpMetricsInterceptor } from './common/interceptors/http-metrics.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { createPinoLoggerConfig } from './common/logger/pino-logger.config';
+import { httpMetricsProviders } from './common/metrics/metrics.providers';
+import { TypeOrmPoolMetrics } from './common/metrics/typeorm-pool.metrics';
 import { AuthModule } from './modules/auth/auth.module';
 import { PostsModule } from './modules/posts/posts.module';
 import { MediaModule } from './modules/media/media.module';
@@ -32,7 +39,24 @@ import { HealthModule } from './modules/health/health.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, redisConfig, jwtConfig, mediaConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        redisConfig,
+        jwtConfig,
+        mediaConfig,
+        telemetryConfig,
+      ],
+    }),
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: createPinoLoggerConfig,
+    }),
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: {
+        enabled: true,
+      },
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -76,8 +100,11 @@ import { HealthModule } from './modules/health/health.module';
     HealthModule,
   ],
   providers: [
+    ...httpMetricsProviders,
+    TypeOrmPoolMetrics,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: HttpMetricsInterceptor },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
