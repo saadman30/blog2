@@ -66,7 +66,16 @@ Root `.env` is used by local API and by Docker Compose (`env_file` points at `.e
 |----------|---------|
 | `PUBLIC_API_URL` | Base URL Astro/browser use for API calls | `http://localhost:3001/api` |
 
+#### Observability
+
+| Variable | Meaning |
+|----------|---------|
+| `OTEL_SERVICE_NAME` | Service name on traces (`pcms-api` or `pcms-web`) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP HTTP traces URL (default `http://localhost:4318/v1/traces`) |
+
 `PUBLIC_` prefix matters in Astro: it is exposed to client-side code.
+
+Details: [observability/README.md](./observability/README.md).
 
 ---
 
@@ -113,16 +122,13 @@ What happens:
 Smoke check:
 
 ```bash
-curl http://localhost:3001/api/health/live
+curl http://localhost:3001/health/liveness
+curl http://localhost:3001/health/readiness
 ```
 
-Expected shape (after interceptor): `{ "success": true, "data": { "status": "ok" } }` (exact inner payload depends on controller return — live endpoint returns a simple ok object).
+Readiness checks Postgres, Redis, and memory. Metrics: `curl http://localhost:3001/metrics`.
 
-Full health (DB + Redis):
-
-```bash
-curl http://localhost:3001/api/health
-```
+For Grafana/Prometheus/Loki, start the full stack — see [observability/06-docker-stack-and-grafana.md](./observability/06-docker-stack-and-grafana.md).
 
 ---
 

@@ -18,6 +18,19 @@ Read these in order if you are new. Jump to a specific file if you already know 
 | [10 — Testing](./10-testing.md) | Jest (API), Vitest (web), coverage rules |
 | [11 — Current gaps & honesty map](./11-current-gaps.md) | What exists vs what is stubbed / incomplete |
 
+### Observability (logs, metrics, traces, Grafana)
+
+| Doc | What it covers |
+|-----|----------------|
+| [Observability index](./observability/README.md) | Three pillars, quick start, ports |
+| [01 — Overview](./observability/01-overview.md) | Architecture, file map, `/metrics` vs `/api` |
+| [02 — Tracing](./observability/02-tracing.md) | OpenTelemetry, Collector, trace propagation |
+| [03 — Logging](./observability/03-logging.md) | Pino, trace_id in logs, Loki readiness |
+| [04 — Metrics](./observability/04-metrics.md) | Prometheus metrics, PromQL, custom counters |
+| [05 — Health checks](./observability/05-health-checks.md) | Liveness vs readiness |
+| [06 — Docker & Grafana](./observability/06-docker-stack-and-grafana.md) | Compose stack, dashboards |
+| [07 — Gaps & runbook](./observability/07-gaps-and-runbook.md) | Troubleshooting, what's not wired yet |
+
 ## One-sentence summary
 
 **PCMS** is an npm workspaces monorepo: a **NestJS REST API** (`apps/api`) backed by **PostgreSQL + Redis**, and an **Astro static site** (`apps/web`) with React islands for interactive bits and a thin back office.
@@ -30,3 +43,8 @@ Read these in order if you are new. Jump to a specific file if you already know 
 | API (NestJS) | `3001` | http://localhost:3001/api |
 | PostgreSQL | `5432` | — |
 | Redis | `6379` | — |
+| Grafana | `3000` | http://localhost:3000 |
+| Prometheus | `9090` | http://localhost:9090 |
+| OTel Collector (HTTP) | `4318` | OTLP traces |
+| Loki | `3100` | — |
+| API metrics | `3001` | http://localhost:3001/metrics |

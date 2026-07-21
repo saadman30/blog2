@@ -6,7 +6,11 @@ All Docker files live under `docker/`.
 docker/
 ├── docker-compose.yml
 ├── Dockerfile.api
-└── Dockerfile.web
+├── Dockerfile.web
+├── otel-collector/
+├── prometheus/
+├── loki/
+└── grafana/
 ```
 
 ---
@@ -45,8 +49,20 @@ File: `docker/docker-compose.yml`
 
 - Build: context repo root, `Dockerfile.web`
 - Build arg: `PUBLIC_API_URL=http://localhost:3001/api`
+- OTEL env for tracing (limited effect in prod — static `serve` image)
 - Port: `4321:4321`
 - Depends on api started
+
+### Observability stack
+
+See **[observability/06-docker-stack-and-grafana.md](./observability/06-docker-stack-and-grafana.md)** for full detail.
+
+| Service | Port | Role |
+|---------|------|------|
+| `otel-collector` | 4317, 4318 | Receives OTLP traces from api/web |
+| `prometheus` | 9090 | Scrapes `http://api:3001/metrics` |
+| `loki` | 3100 | Log storage (shipper not included yet) |
+| `grafana` | 3000 | Dashboards (`admin` / `admin`) |
 
 ---
 
@@ -54,7 +70,7 @@ File: `docker/docker-compose.yml`
 
 1. **deps** — `npm ci` for `@pcms/api` workspace (+ root)
 2. **builder** — copy API source, `npm run build` (Nest → `dist/`)
-3. **runner** — Node 20 alpine, copy `dist` + `node_modules`, `USER node`, `CMD node dist/main.js`, expose 3001
+3. **runner** — Node 20 alpine, copy `dist` + `node_modules`, `USER node`, `CMD node --import ./dist/tracing.js ./dist/main.js`, expose 3001
 
 Production image runs compiled JS only.
 

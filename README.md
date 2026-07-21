@@ -55,3 +55,9 @@ docker compose -f docker/docker-compose.yml up --build
 - JWT access tokens + HttpOnly SameSite=Strict refresh cookies
 - RBAC (`ADMIN` / `EDITOR`), rate limiting
 - DOMPurify sanitization for rendered Markdown
+
+## Observability
+
+Logs (Pino), metrics (Prometheus `/metrics`), and traces (OpenTelemetry → Collector). Grafana dashboards via Docker Compose.
+
+**→ [docs/observability/README.md](./docs/observability/README.md)**

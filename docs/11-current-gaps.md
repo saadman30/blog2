@@ -72,6 +72,20 @@ Do not expect in `apps/web`:
 
 ---
 
+## Observability (partial)
+
+| Area | Status |
+|------|--------|
+| Pino logs + trace_id | ✅ API |
+| Prometheus HTTP + pool metrics | ✅ `/metrics` |
+| OTEL traces → Collector | ✅ API; web dev/preview only |
+| Grafana dashboards | ✅ HTTP/pool panels work |
+| Loki log panels | ⚠️ Loki runs; no log shipper yet |
+| Trace UI in Grafana | ⚠️ Collector logs only |
+| Dashboard metrics for scheduler/claps/cache | ❌ queries exist, counters not in code |
+
+Full detail: [observability/07-gaps-and-runbook.md](./observability/07-gaps-and-runbook.md).
+
 ## Quick “where do I change X?”
 
 | I want to change… | Start here |
@@ -85,3 +99,5 @@ Do not expect in `apps/web`:
 | Design tokens | `styles/global.scss`, `_variables.scss`, `tailwind.config.mjs` |
 | API base URL | `PUBLIC_API_URL` |
 | Compose ports | `docker/docker-compose.yml` |
+| Metrics / tracing / logs | `apps/api/src/common/metrics/*`, `tracing.ts`, `pino-logger.config.ts` |
+| Grafana dashboards | `docker/grafana/dashboards/` |
