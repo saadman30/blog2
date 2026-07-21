@@ -43,7 +43,7 @@ Every feature module is hexagonal:
 
 ## Hexagonal architecture
 
-This section explains **how** PCMS applies ports & adapters. Skim [01 — Overview](../01-overview-and-architecture.md#architecture-style-of-the-api) for the short version.
+This section is the **reference** for how PCMS applies ports & adapters. For a tutorial-style walkthrough (restaurant analogy, full register slice, media S3 swap story, exercises), read [Hexagonal architecture tutorial](./hexagonal-architecture-tutorial.md). Skim [01 — Overview](../01-overview-and-architecture.md#architecture-style-of-the-api) for the short version.
 
 ### Dependency rule (non-negotiable)
 

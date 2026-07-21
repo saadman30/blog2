@@ -174,7 +174,7 @@ Shared kernel enums/models live in `apps/api/src/domain/`. Cross-cutting Nest co
 - `analytics` — views, claps, summary
 - `health` — DB + Redis checks
 
-For ports, adapters, and a worked posts example, see [05 — API deep dive](./api/05-api-deep-dive.md#hexagonal-architecture).
+For a full tutorial (auth/media/posts walkthroughs, why Symbol tokens, how to add a port), see [Hexagonal architecture tutorial](./api/hexagonal-architecture-tutorial.md). For the shorter reference plus every route, see [05 — API deep dive](./api/05-api-deep-dive.md#hexagonal-architecture).
 
 ---
 
