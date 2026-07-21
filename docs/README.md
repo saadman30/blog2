@@ -32,13 +32,14 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 ### Part 4 — Observability (logs, metrics, traces, Grafana)
 
 13. [Observability index](./observability/README.md) — three pillars, quick start, ports  
-14. [Observability 01 — Overview](./observability/01-overview.md) — how logging, metrics, and tracing connect  
-15. [Observability 02 — Tracing](./observability/02-tracing.md) — OpenTelemetry, Collector, trace propagation  
-16. [Observability 03 — Logging](./observability/03-logging.md) — Pino, `trace_id` in logs  
-17. [Observability 04 — Metrics](./observability/04-metrics.md) — Prometheus `/metrics`, PromQL  
-18. [Observability 05 — Health checks](./observability/05-health-checks.md) — liveness vs readiness  
-19. [Observability 06 — Docker & Grafana](./observability/06-docker-stack-and-grafana.md) — dashboards, generating traffic  
-20. [Observability 07 — Gaps & runbook](./observability/07-gaps-and-runbook.md) — troubleshooting, what is not wired yet  
+14. [Observability tutorial](./observability/observability-tutorial.md) — **start here:** hands-on how logs, metrics, traces, health & Grafana work in this repo  
+15. [Observability 01 — Overview](./observability/01-overview.md) — how logging, metrics, and tracing connect  
+16. [Observability 02 — Tracing](./observability/02-tracing.md) — OpenTelemetry, Collector, trace propagation  
+17. [Observability 03 — Logging](./observability/03-logging.md) — Pino, `trace_id` in logs  
+18. [Observability 04 — Metrics](./observability/04-metrics.md) — Prometheus `/metrics`, PromQL  
+19. [Observability 05 — Health checks](./observability/05-health-checks.md) — liveness vs readiness  
+20. [Observability 06 — Docker & Grafana](./observability/06-docker-stack-and-grafana.md) — dashboards, generating traffic  
+21. [Observability 07 — Gaps & runbook](./observability/07-gaps-and-runbook.md) — troubleshooting, what is not wired yet  
 
 ### Short paths (if you are in a hurry)
 
@@ -47,8 +48,9 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 | Run the project today | **1 → 2** |
 | Understand the API only | **1 → 3 → 4 → 5 → 6** |
 | Understand the frontend only | **1 → 7 → 8 (Astro tutorial) → 9** |
-| Debug production / Docker | **2 → 10 → 12 → 13 → 19 → 20** |
-| Set up Grafana & metrics | **13 → 14 → 17 → 19 → 20** |
+| Debug production / Docker | **2 → 10 → 12 → 13 → 20 → 21** |
+| Learn observability (tutorial) | **13 → 14** |
+| Set up Grafana & metrics | **13 → 14 → 18 → 20 → 21** |
 
 ---
 
@@ -74,6 +76,7 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 | Doc | What it covers |
 |-----|----------------|
 | [Observability index](./observability/README.md) | Three pillars, quick start, ports |
+| [Observability tutorial](./observability/observability-tutorial.md) | Tutorial: follow a request through logs, metrics, traces, health, Grafana |
 | [01 — Overview](./observability/01-overview.md) | Architecture, file map, `/metrics` vs `/api` |
 | [02 — Tracing](./observability/02-tracing.md) | OpenTelemetry, Collector, trace propagation |
 | [03 — Logging](./observability/03-logging.md) | Pino, trace_id in logs, Loki readiness |

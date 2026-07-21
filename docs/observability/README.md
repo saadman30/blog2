@@ -8,10 +8,13 @@ PCMS can answer three questions about itself while it runs:
 
 A Docker Compose stack can run the supporting tools (OTel Collector, Prometheus, Loki, Grafana) so you can see everything in dashboards.
 
-**In the main docs:** this section is **steps 12 → 19** in [docs/README.md](../README.md). Within observability, read **01 → 07** in order.
+**Start here if you are learning:** [Observability tutorial](./observability-tutorial.md) — hands-on walkthrough through this repo (lab → code → Grafana → gaps).
+
+**In the main docs:** this section is **steps 12 → 20** in [docs/README.md](../README.md). Within observability, prefer the **tutorial**, then skim **01 → 07** as reference.
 
 | # | Doc | What it covers |
 |---|-----|----------------|
+| — | [**Tutorial** — how observability works](./observability-tutorial.md) | End-to-end lab: logs, metrics, traces, health, Grafana |
 | 1 | [01 — Overview](./01-overview.md) | The three pillars, how data flows, ports |
 | 2 | [02 — Distributed tracing](./02-tracing.md) | OpenTelemetry in API + web, trace propagation |
 | 3 | [03 — Logging](./03-logging.md) | Pino, log levels, trace_id in every log line |
