@@ -100,7 +100,46 @@ Node version: **>= 20**.
 
 ## Architecture style of the API
 
-The API uses **hexagonal architecture** (ports & adapters) inside Nest feature modules.
+The API uses **hexagonal architecture** (also called **ports & adapters**) inside Nest feature modules.
+
+### Why
+
+Business rules should not know about Nest controllers, TypeORM, BullMQ, Sharp, or Redis. Those are **details**. Hexagonal keeps the core independent so you can:
+
+- unit-test application logic by mocking ports (no real DB or queue)
+- swap an adapter later (e.g. local disk → S3) without rewriting use cases
+- read a feature as “what it does” (`application/`) vs “how it talks to the world” (`infrastructure/`)
+
+### The idea in one picture
+
+Imagine the **application** at the center. Everything outside talks through a **port** (an interface the app defines). An **adapter** is a concrete implementation of that port.
+
+```text
+                    ┌─────────────────────────────────────┐
+                    │         Driving adapters            │
+                    │  HTTP controllers, BullMQ consumer  │
+                    └─────────────────┬───────────────────┘
+                                      │ calls
+                                      ▼
+┌──────────────┐            ┌──────────────────┐            ┌──────────────┐
+│   Domain     │◄───────────│   Application    │───────────►│    Ports     │
+│ plain models │            │  services /      │  depends   │  interfaces  │
+│ & enums      │            │  use cases       │  on        │  + tokens    │
+└──────────────┘            └──────────────────┘            └──────┬───────┘
+                                                                   │
+                                                                   │ implemented by
+                                                                   ▼
+                                                    ┌──────────────────────────┐
+                                                    │   Driven adapters        │
+                                                    │ TypeORM, BullMQ, bcrypt, │
+                                                    │ Sharp, local fs, Redis   │
+                                                    └──────────────────────────┘
+```
+
+**Driving** (inbound): the outside world pushes work in — HTTP request, scheduled job.  
+**Driven** (outbound): the app pulls work out — save a post, hash a password, enqueue publish.
+
+### Request path (this codebase)
 
 ```text
 HTTP request
@@ -113,7 +152,21 @@ HTTP request
     → Or Filter wraps errors as { success: false, ... }
 ```
 
-Each feature lives in `apps/api/src/modules/<name>/` with `domain/`, `application/` (ports + service), `infrastructure/` (adapters), and a Nest `*.module.ts` composition root.
+### Folder meaning per feature
+
+Each feature lives in `apps/api/src/modules/<name>/`:
+
+| Folder | Role |
+|--------|------|
+| `domain/` | Plain TypeScript models (no Nest, no TypeORM) |
+| `application/ports/` | Interfaces + injection tokens the app needs |
+| `application/*.service.ts` | Business rules; depends on **ports only** |
+| `infrastructure/` | Adapters: `http/`, `persistence/`, messaging, storage, security, … |
+| `*.module.ts` | Nest composition root: bind each port token → adapter class |
+
+Shared kernel enums/models live in `apps/api/src/domain/`. Cross-cutting Nest code stays in `apps/api/src/common/`. TypeORM entities stay in `apps/api/src/database/entities/` (persistence detail, not domain).
+
+### Features
 
 - `auth` — register, login, refresh, logout
 - `posts` — CRUD, publish, schedule, markdown render
@@ -121,7 +174,7 @@ Each feature lives in `apps/api/src/modules/<name>/` with `domain/`, `applicatio
 - `analytics` — views, claps, summary
 - `health` — DB + Redis checks
 
-Shared kernel enums/models live in `apps/api/src/domain/`. Cross-cutting Nest code stays in `apps/api/src/common/`.
+For ports, adapters, and a worked posts example, see [05 — API deep dive](./api/05-api-deep-dive.md#hexagonal-architecture).
 
 ---
 

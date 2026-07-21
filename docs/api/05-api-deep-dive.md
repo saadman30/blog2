@@ -41,6 +41,112 @@ Every feature module is hexagonal:
 
 ---
 
+## Hexagonal architecture
+
+This section explains **how** PCMS applies ports & adapters. Skim [01 — Overview](../01-overview-and-architecture.md#architecture-style-of-the-api) for the short version.
+
+### Dependency rule (non-negotiable)
+
+```text
+domain  ←  application  ←  infrastructure / Nest module
+```
+
+- **Domain** knows nothing about Nest, TypeORM, HTTP, or queues.
+- **Application** knows domain + **port interfaces**. It must not import TypeORM, BullMQ, bcrypt, Sharp, `fs`, or `marked`.
+- **Infrastructure** implements ports and may use any library.
+- The Nest `*.module.ts` is the **only** place that wires `provide: PORT_TOKEN → useClass: Adapter`.
+
+Imports that point **inward** (infra → application → domain) are fine. Imports that point **outward** (application → infra) are a bug.
+
+### Ports vs adapters
+
+| Term | Meaning in this repo | Example |
+|------|----------------------|---------|
+| **Port** | Interface + `Symbol` token under `application/ports/` | `PostRepositoryPort` + `POST_REPOSITORY` |
+| **Driven adapter** | Implements a port; talks to DB/queue/disk/crypto | `TypeOrmPostRepository`, `BullMqPostSchedulerAdapter` |
+| **Driving adapter** | Receives external events; calls the application service | `PostsController`, `PostSchedulerConsumer` |
+| **Composition root** | Nest module that binds tokens to adapters | `posts.module.ts` |
+
+A port looks like this (`modules/posts/application/ports/post.repository.port.ts`):
+
+```typescript
+export const POST_REPOSITORY = Symbol('POST_REPOSITORY');
+
+export interface PostRepositoryPort {
+  save(data: SavePostData): Promise<Post>;
+  findById(id: string): Promise<Post | null>;
+  findPublished(tag?: string): Promise<Post[]>;
+  // …
+}
+```
+
+The application service injects the **token**, not TypeORM:
+
+```typescript
+constructor(
+  @Inject(POST_REPOSITORY) private readonly posts: PostRepositoryPort,
+  @Inject(POST_SCHEDULER) private readonly scheduler: PostSchedulerPort,
+  // …
+) {}
+```
+
+The module binds the real adapter:
+
+```typescript
+{ provide: POST_REPOSITORY, useClass: TypeOrmPostRepository },
+{ provide: POST_SCHEDULER, useClass: BullMqPostSchedulerAdapter },
+```
+
+### Worked example: create a scheduled post
+
+1. **Driving:** `POST /api/posts` → `PostsController.create` → `PostsService.create`.
+2. **Application:** validates schedule, builds a unique slug, calls `POST_REPOSITORY.save`, `POST_ANALYTICS.ensureForPost`, and if status is `SCHEDULED`, `POST_SCHEDULER.schedulePublish`.
+3. **Driven:** TypeORM writes rows; BullMQ enqueues `publish-post` with a delay.
+4. Later, **driving again:** `PostSchedulerConsumer` receives the job → `PostsService.publishScheduled` → repository updates status to `PUBLISHED`.
+
+Same business rules whether the trigger was HTTP or a queue worker.
+
+### Ports by feature
+
+| Feature | Ports (tokens) | Typical adapters |
+|---------|----------------|------------------|
+| **posts** | `POST_REPOSITORY`, `POST_SCHEDULER`, `POST_ANALYTICS`, `HTML_RENDERER` | TypeORM repo/analytics, BullMQ scheduler, marked HTML renderer |
+| **auth** | `USER_REPOSITORY`, `PASSWORD_HASHER`, `TOKEN_SERVICE` | TypeORM users, bcrypt, JWT |
+| **media** | `MEDIA_REPOSITORY`, `IMAGE_PROCESSOR`, `FILE_STORAGE` | TypeORM media, Sharp, local filesystem |
+| **analytics** | `ANALYTICS_REPOSITORY`, `PUBLISHED_POST_LOOKUP` | TypeORM analytics + published-post check |
+| **health** | `CACHE_HEALTH` | ioredis ping; Terminus indicator wraps the port |
+
+### What stays outside “pure” hexagon
+
+Pragmatic Nest choices we keep on purpose:
+
+- Application services use `@Injectable()` and Nest HTTP exceptions (`NotFoundException`, …).
+- Guards, filters, interceptors, throttling stay in `src/common/` (framework edge).
+- TypeORM **entities** live under `src/database/entities/`; mappers in `infrastructure/persistence/` convert entity ↔ domain model.
+- Pure helpers like `slugify` / `sanitizeHtml` in `common/utils` may be used by application code (no I/O).
+
+### How to test
+
+| Layer | What you mock | Where |
+|-------|---------------|-------|
+| Application service | Port interfaces | `application/*.service.spec.ts` |
+| Adapter | TypeORM `Repository`, BullMQ `Queue`, `fs`, etc. | `infrastructure/**/*.spec.ts` |
+| Controller | Application service | `infrastructure/http/*.spec.ts` |
+
+Coverage excludes `*.port.ts`, `*.model.ts`, `*.types.ts`, and `src/domain/**` (interfaces/types only). Everything else under modules that runs logic must stay at **100%**.
+
+### Adding a new capability (checklist)
+
+1. Put pure types in `domain/` if needed.
+2. Define or extend a **port** under `application/ports/`.
+3. Implement the rule in the application service using only that port.
+4. Write a **driven adapter** under `infrastructure/`.
+5. Bind `provide` / `useClass` in the feature `*.module.ts`.
+6. Keep the HTTP controller thin — map request → service → response.
+7. Add specs: mock ports for the service; mock the real dependency for the adapter.
+
+---
+
 ## Bootstrap (`main.ts`) step by step
 
 1. `NestFactory.create(AppModule)` (Express adapter)

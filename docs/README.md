@@ -17,7 +17,7 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 
 ### Part 2 — Application code
 
-5. [05 — API deep dive](./api/05-api-deep-dive.md) — NestJS modules, every route, services  
+5. [05 — API deep dive](./api/05-api-deep-dive.md) — NestJS modules, hexagonal ports/adapters, every route, services  
 6. [06 — API common layer](./api/06-api-common-layer.md) — guards, filters, interceptors, decorators  
 7. [07 — Web deep dive](./web/07-web-deep-dive.md) — Astro pages, React islands, styles, API client  
 8. [08 — Request flows](./08-request-flows.md) — login, publish, schedule, clap (end-to-end stories)  
@@ -55,11 +55,11 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 
 | Doc | What it covers |
 |-----|----------------|
-| [01 — Overview & architecture](./01-overview-and-architecture.md) | What PCMS is, monorepo layout, how API + web + DB + Redis talk |
+| [01 — Overview & architecture](./01-overview-and-architecture.md) | What PCMS is, monorepo layout, hexagonal API sketch, how API + web + DB + Redis talk |
 | [02 — Getting started](./02-getting-started.md) | Env vars, install, local run, useful scripts |
 | [03 — Database & data model](./03-database-and-data-model.md) | Tables, relationships, enums, migrations, TypeORM sync |
 | [04 — Auth & security](./04-auth-and-security.md) | JWT, cookies, roles, rate limits, Helmet, validation |
-| [05 — API deep dive](./api/05-api-deep-dive.md) | NestJS bootstrap, modules, every route, services |
+| [05 — API deep dive](./api/05-api-deep-dive.md) | NestJS bootstrap, hexagonal architecture, modules, every route, services |
 | [06 — API common layer](./api/06-api-common-layer.md) | Guards, filters, interceptors, decorators, content utils |
 | [07 — Web deep dive](./web/07-web-deep-dive.md) | Astro pages, React islands, styles, stores, API client |
 | [08 — Request flows](./08-request-flows.md) | Step-by-step: login, publish, schedule, clap, health |
