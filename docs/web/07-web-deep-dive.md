@@ -283,5 +283,6 @@ Because output is static, anything that must vary per request at runtime (unless
 
 ## Next
 
+- Learn Astro via this codebase: [Astro tutorial](./astro-tutorial.md)
 - Walkthroughs: [08 — Request flows](../08-request-flows.md)
 - Infra: [09 — Docker](../09-docker-and-infrastructure.md)

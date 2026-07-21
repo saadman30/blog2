@@ -20,24 +20,25 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 5. [05 — API deep dive](./api/05-api-deep-dive.md) — NestJS modules, hexagonal ports/adapters, every route, services  
 6. [06 — API common layer](./api/06-api-common-layer.md) — guards, filters, interceptors, decorators  
 7. [07 — Web deep dive](./web/07-web-deep-dive.md) — Astro pages, React islands, styles, API client  
-8. [08 — Request flows](./08-request-flows.md) — login, publish, schedule, clap (end-to-end stories)  
+8. [Astro tutorial](./web/astro-tutorial.md) — learn Astro through this repo (static output, islands, `getStaticPaths`)  
+9. [08 — Request flows](./08-request-flows.md) — login, publish, schedule, clap (end-to-end stories)  
 
 ### Part 3 — Operations & quality
 
-9. [09 — Docker & infrastructure](./09-docker-and-infrastructure.md) — Compose, Dockerfiles, ports  
-10. [10 — Testing](./10-testing.md) — tutorial: Jest (API), Vitest (web), how mocks/coverage work, how to add tests  
-11. [11 — Current gaps & honesty map](./11-current-gaps.md) — what is real vs stubbed (read before assuming a feature exists)  
+10. [09 — Docker & infrastructure](./09-docker-and-infrastructure.md) — Compose, Dockerfiles, ports  
+11. [10 — Testing](./10-testing.md) — tutorial: Jest (API), Vitest (web), how mocks/coverage work, how to add tests  
+12. [11 — Current gaps & honesty map](./11-current-gaps.md) — what is real vs stubbed (read before assuming a feature exists)  
 
 ### Part 4 — Observability (logs, metrics, traces, Grafana)
 
-12. [Observability index](./observability/README.md) — three pillars, quick start, ports  
-13. [Observability 01 — Overview](./observability/01-overview.md) — how logging, metrics, and tracing connect  
-14. [Observability 02 — Tracing](./observability/02-tracing.md) — OpenTelemetry, Collector, trace propagation  
-15. [Observability 03 — Logging](./observability/03-logging.md) — Pino, `trace_id` in logs  
-16. [Observability 04 — Metrics](./observability/04-metrics.md) — Prometheus `/metrics`, PromQL  
-17. [Observability 05 — Health checks](./observability/05-health-checks.md) — liveness vs readiness  
-18. [Observability 06 — Docker & Grafana](./observability/06-docker-stack-and-grafana.md) — dashboards, generating traffic  
-19. [Observability 07 — Gaps & runbook](./observability/07-gaps-and-runbook.md) — troubleshooting, what is not wired yet  
+13. [Observability index](./observability/README.md) — three pillars, quick start, ports  
+14. [Observability 01 — Overview](./observability/01-overview.md) — how logging, metrics, and tracing connect  
+15. [Observability 02 — Tracing](./observability/02-tracing.md) — OpenTelemetry, Collector, trace propagation  
+16. [Observability 03 — Logging](./observability/03-logging.md) — Pino, `trace_id` in logs  
+17. [Observability 04 — Metrics](./observability/04-metrics.md) — Prometheus `/metrics`, PromQL  
+18. [Observability 05 — Health checks](./observability/05-health-checks.md) — liveness vs readiness  
+19. [Observability 06 — Docker & Grafana](./observability/06-docker-stack-and-grafana.md) — dashboards, generating traffic  
+20. [Observability 07 — Gaps & runbook](./observability/07-gaps-and-runbook.md) — troubleshooting, what is not wired yet  
 
 ### Short paths (if you are in a hurry)
 
@@ -45,9 +46,9 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 |------|------|
 | Run the project today | **1 → 2** |
 | Understand the API only | **1 → 3 → 4 → 5 → 6** |
-| Understand the frontend only | **1 → 7 → 8** |
-| Debug production / Docker | **2 → 9 → 11 → 12 → 18 → 19** |
-| Set up Grafana & metrics | **12 → 13 → 16 → 18 → 19** |
+| Understand the frontend only | **1 → 7 → 8 (Astro tutorial) → 9** |
+| Debug production / Docker | **2 → 10 → 12 → 13 → 19 → 20** |
+| Set up Grafana & metrics | **13 → 14 → 17 → 19 → 20** |
 
 ---
 
@@ -62,6 +63,7 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 | [05 — API deep dive](./api/05-api-deep-dive.md) | NestJS bootstrap, hexagonal architecture, modules, every route, services |
 | [06 — API common layer](./api/06-api-common-layer.md) | Guards, filters, interceptors, decorators, content utils |
 | [07 — Web deep dive](./web/07-web-deep-dive.md) | Astro pages, React islands, styles, stores, API client |
+| [Astro tutorial](./web/astro-tutorial.md) | Tutorial: how Astro works in PCMS (static SSG, islands, paths, data) |
 | [08 — Request flows](./08-request-flows.md) | Step-by-step: login, publish, schedule, clap, health |
 | [09 — Docker & infrastructure](./09-docker-and-infrastructure.md) | Compose services, Dockerfiles, ports, volumes |
 | [10 — Testing](./10-testing.md) | Tutorial: run suites, Jest/Vitest setup, mock ports, write tests, 100% coverage gate |
