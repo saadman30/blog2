@@ -1,0 +1,128 @@
+---
+import BlogLayout from '../../layouts/BlogLayout.astro';
+import { TableOfContents } from '../../components/TableOfContents';
+import { ClapButton } from '../../components/ClapButton';
+import { CopyCodeButton } from '../../components/CopyCodeButton';
+import { Badge } from '../../components/ui/badge';
+import { buildTableOfContents, formatDate } from '../../utils/content';
+
+export function getStaticPaths() {
+  return [
+    {
+      params: { slug: 'welcome-to-pcms' },
+      props: {
+        post: {
+          id: 'demo',
+          title: 'Welcome to PCMS',
+          slug: 'welcome-to-pcms',
+          content:
+            '## Why PCMS\n\nA focused system for publishing.\n\n## Architecture\n\nNestJS API, Astro web, TypeORM, Redis.\n\n```ts\nconst ready = true;\n```\n',
+          summary: 'A starter essay about the portfolio content system.',
+          readingTime: 3,
+          publishedAt: new Date().toISOString(),
+          tags: ['meta'],
+          html: '<h2 id="why-pcms">Why PCMS</h2><p>A focused system for publishing.</p><h2 id="architecture">Architecture</h2><p>NestJS API, Astro web, TypeORM, Redis.</p><pre><code class="language-ts">const ready = true;</code></pre>',
+        },
+      },
+    },
+  ];
+}
+
+const { post } = Astro.props;
+const toc = buildTableOfContents(post.content);
+const sampleCode = 'const ready = true;';
+---
+
+<BlogLayout title={`${post.title} — PCMS`} description={post.summary ?? post.title}>
+  <Fragment slot="aside">
+    <TableOfContents items={toc} />
+  </Fragment>
+
+  <header class="post-header">
+    <h1>{post.title}</h1>
+    <p>
+      {post.publishedAt ? formatDate(post.publishedAt) : 'Unpublished'} · {post.readingTime} min read
+    </p>
+    <div class="post-header__tags">
+      {post.tags.map((tag: string) => (
+        <a href={`/blog/tag/${tag}`}>
+          <Badge>{tag}</Badge>
+        </a>
+      ))}
+    </div>
+  </header>
+
+  <div class="post-body" set:html={post.html} />
+
+  <div class="post-tools">
+    <CopyCodeButton client:load code={sampleCode} />
+    <ClapButton client:load postId={post.id} initialClaps={0} />
+  </div>
+</BlogLayout>
+
+<style lang="scss">
+  .post-header {
+    @include stack($space-sm);
+
+    h1 {
+      font-family: $font-display;
+      font-size: clamp(2rem, 5vw, 3rem);
+      margin: 0;
+    }
+
+    &__tags {
+      display: flex;
+      gap: $space-xs;
+      flex-wrap: wrap;
+    }
+  }
+
+  .post-body {
+    line-height: 1.75;
+    font-size: 1.0625rem;
+
+    :global(h2),
+    :global(h3) {
+      font-family: $font-display;
+      scroll-margin-top: 5rem;
+    }
+
+    :global(pre) {
+      overflow-x: auto;
+      padding: $space-md;
+      border-radius: 0.5rem;
+      background: hsl(var(--secondary));
+    }
+  }
+
+  .post-tools {
+    display: flex;
+    gap: $space-sm;
+    flex-wrap: wrap;
+  }
+
+  :global(.toc) {
+    @include stack($space-sm);
+    position: sticky;
+    top: 5.5rem;
+    padding: $space-md;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+  }
+
+  :global(.toc__title) {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  :global(.toc__list) {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    @include stack($space-xs);
+  }
+
+  :global(.toc__item--l3) {
+    padding-left: $space-md;
+  }
+</style>

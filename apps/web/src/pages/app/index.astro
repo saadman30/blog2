@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { LoginForm } from '../../components/backoffice/LoginForm';
+---
+
+<BaseLayout title="Back Office — PCMS" description="Secure editorial portal.">
+  <section class="app-home">
+    <h1>Back Office</h1>
+    <p>Sign in to manage posts, media, and analytics.</p>
+    <LoginForm client:load />
+    <nav class="app-home__links">
+      <a href="/app/posts">Posts</a>
+      <a href="/app/write">Write</a>
+      <a href="/app/media">Media</a>
+      <a href="/app/settings">Settings</a>
+    </nav>
+  </section>
+</BaseLayout>
+
+<style lang="scss">
+  .app-home {
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: $space-xl $space-lg;
+    @include stack($space-md);
+
+    h1 {
+      font-family: $font-display;
+      margin: 0;
+    }
+
+    &__links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $space-md;
+      font-weight: 600;
+    }
+  }
+</style>

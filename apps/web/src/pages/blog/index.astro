@@ -1,0 +1,118 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Badge } from '../components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { formatDate } from '../utils/content';
+
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001/api';
+
+interface PostSummary {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  readingTime: number;
+  publishedAt: string | null;
+  tags: string[];
+}
+
+let posts: PostSummary[] = [];
+try {
+  const response = await fetch(`${apiUrl}/posts`);
+  if (response.ok) {
+    const payload = (await response.json()) as { success: true; data: PostSummary[] };
+    posts = payload.data ?? [];
+  }
+} catch {
+  posts = [
+    {
+      id: 'demo',
+      title: 'Welcome to PCMS',
+      slug: 'welcome-to-pcms',
+      summary: 'A starter essay about the portfolio content system.',
+      readingTime: 3,
+      publishedAt: new Date().toISOString(),
+      tags: ['meta'],
+    },
+  ];
+}
+---
+
+<BaseLayout title="Blog — PCMS" description="Essays and notes from the PCMS archive.">
+  <section class="blog-index">
+    <header class="blog-index__header">
+      <h1>Blog</h1>
+      <p>Long-form writing on product, architecture, and craft.</p>
+    </header>
+    <div class="blog-index__grid">
+      {
+        posts.map((post) => (
+          <a href={`/blog/${post.slug}`}>
+            <Card className="blog-index__card">
+              <CardHeader>
+                <CardTitle>{post.title}</CardTitle>
+                <CardDescription>
+                  {post.publishedAt ? formatDate(post.publishedAt) : 'Draft'} · {post.readingTime} min
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p>{post.summary ?? 'Read more'}</p>
+                <div class="blog-index__tags">
+                  {post.tags.map((tag) => (
+                    <a href={`/blog/tag/${tag}`}>
+                      <Badge>{tag}</Badge>
+                    </a>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<style lang="scss">
+  .blog-index {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: $space-xl $space-lg;
+    @include stack($space-lg);
+
+    &__header {
+      @include stack($space-sm);
+
+      h1 {
+        font-family: $font-display;
+        font-size: clamp(2rem, 5vw, 3rem);
+        margin: 0;
+      }
+    }
+
+    &__grid {
+      display: grid;
+      gap: $space-md;
+
+      @include respond-up($bp-md) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    &__card {
+      height: 100%;
+      transition: transform 200ms ease, border-color 200ms ease;
+
+      &:hover {
+        transform: translateY(-2px);
+      }
+    }
+
+    &__tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $space-xs;
+      margin-top: $space-md;
+    }
+  }
+</style>

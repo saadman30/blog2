@@ -1,0 +1,39 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <article class="blog-layout">
+    <slot name="aside" />
+    <div class="blog-layout__content">
+      <slot />
+    </div>
+  </article>
+</BaseLayout>
+
+<style lang="scss">
+  .blog-layout {
+    @include stack($space-lg);
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: $space-lg;
+
+    @include respond-up($bp-lg) {
+      display: grid;
+      grid-template-columns: 16rem 1fr;
+      align-items: start;
+    }
+
+    &__content {
+      @include stack($space-md);
+      min-width: 0;
+    }
+  }
+</style>

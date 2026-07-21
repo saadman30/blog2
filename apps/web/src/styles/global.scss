@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 222.2 47.4% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+  --primary: 173 80% 26%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 173 40% 94%;
+  --accent-foreground: 173 80% 20%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 173 80% 26%;
+  --radius: 0.5rem;
+  --bg-primary: #f8fafc;
+  --bg-hero: linear-gradient(160deg, #ecfeff 0%, #f8fafc 45%, #e2e8f0 100%);
+}
+
+.dark {
+  --background: 222.2 47.4% 8%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 47.4% 11%;
+  --card-foreground: 210 40% 98%;
+  --primary: 172 66% 50%;
+  --primary-foreground: 222.2 47.4% 8%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 173 30% 18%;
+  --accent-foreground: 172 66% 70%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 172 66% 50%;
+  --bg-primary: #0f172a;
+  --bg-hero: linear-gradient(160deg, #0f172a 0%, #134e4a 50%, #0f172a 100%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: hsl(var(--foreground));
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}

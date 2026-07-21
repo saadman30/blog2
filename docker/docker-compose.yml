@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pcms
+      POSTGRES_PASSWORD: pcms_secret
+      POSTGRES_DB: pcms
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pcms -d pcms']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    env_file:
+      - ../.env.example
+    environment:
+      DATABASE_HOST: postgres
+      REDIS_HOST: redis
+      API_PORT: 3001
+      CORS_ORIGIN: http://localhost:4321
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+      args:
+        PUBLIC_API_URL: http://localhost:3001/api
+    ports:
+      - '4321:4321'
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  postgres_data:

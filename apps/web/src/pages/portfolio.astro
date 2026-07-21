@@ -1,0 +1,65 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+
+const projects = [
+  {
+    title: 'PCMS Platform',
+    summary: 'Portfolio CMS with NestJS, Astro islands, and scheduled publishing.',
+    stack: 'TypeScript · NestJS · Astro · TypeORM',
+  },
+  {
+    title: 'Edge Media Pipeline',
+    summary: 'Image ingestion with WebP conversion and object storage delivery.',
+    stack: 'Sharp · S3/R2 · Redis queues',
+  },
+];
+---
+
+<BaseLayout title="Portfolio — PCMS" description="Selected work and systems.">
+  <section class="portfolio">
+    <header>
+      <h1>Portfolio</h1>
+      <p>Selected systems work with measurable outcomes.</p>
+    </header>
+    <div class="portfolio__grid">
+      {
+        projects.map((project) => (
+          <Card>
+            <CardHeader>
+              <CardTitle>{project.title}</CardTitle>
+              <CardDescription>{project.stack}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>{project.summary}</p>
+            </CardContent>
+          </Card>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<style lang="scss">
+  .portfolio {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: $space-xl $space-lg;
+    @include stack($space-lg);
+
+    h1 {
+      font-family: $font-display;
+      font-size: clamp(2rem, 5vw, 3rem);
+      margin: 0 0 $space-sm;
+    }
+
+    &__grid {
+      display: grid;
+      gap: $space-md;
+
+      @include respond-up($bp-md) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  }
+</style>

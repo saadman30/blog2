@@ -1,0 +1,82 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Button } from '../components/ui/button';
+---
+
+<BaseLayout title="PCMS — Portfolio & Writing" description="Engineering portfolio and long-form writing.">
+  <section class="home-hero">
+    <div class="home-hero__copy">
+      <p class="home-hero__brand">PCMS</p>
+      <h1>Build in public. Ship with clarity.</h1>
+      <p class="home-hero__lede">
+        A portfolio and content system for essays, case studies, and product notes — crafted for readers first.
+      </p>
+      <div class="home-hero__actions">
+        <a href="/blog"><Button client:load>Read the blog</Button></a>
+        <a href="/portfolio"><Button client:load variant="outline">View portfolio</Button></a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style lang="scss">
+  .home-hero {
+    min-height: calc(100vh - 5rem);
+    display: grid;
+    place-items: center;
+    padding: $space-xl $space-lg;
+    background: var(--bg-hero);
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(15, 118, 110, 0.18), transparent 40%),
+      radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.16), transparent 35%),
+      var(--bg-hero);
+
+    &__copy {
+      max-width: 42rem;
+      @include stack($space-md);
+      animation: rise 700ms ease-out both;
+    }
+
+    &__brand {
+      font-family: $font-display;
+      font-size: clamp(2.5rem, 8vw, 4.5rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      margin: 0;
+      line-height: 1;
+    }
+
+    h1 {
+      font-family: $font-display;
+      font-size: clamp(1.5rem, 4vw, 2.25rem);
+      font-weight: 500;
+      margin: 0;
+      max-width: 18ch;
+    }
+
+    &__lede {
+      margin: 0;
+      font-size: 1.125rem;
+      color: hsl(var(--muted-foreground));
+      max-width: 36ch;
+    }
+
+    &__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $space-sm;
+      margin-top: $space-sm;
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>

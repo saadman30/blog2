@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Settings — Back Office">
+  <section class="admin-page">
+    <h1>Settings</h1>
+    <p>Manage JWT sessions, 2FA secrets, and editorial preferences from the API auth module.</p>
+  </section>
+</BaseLayout>
+
+<style lang="scss">
+  .admin-page {
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: $space-xl $space-lg;
+    @include stack($space-md);
+
+    h1 {
+      font-family: $font-display;
+      margin: 0;
+    }
+  }
+</style>

@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+
+export function getStaticPaths() {
+  return [{ params: { tag: 'meta' } }, { params: { tag: 'engineering' } }];
+}
+
+const { tag } = Astro.params;
+---
+
+<BaseLayout title={`Tag: ${tag} — PCMS`}>
+  <section class="tag-page">
+    <h1>#{tag}</h1>
+    <p>Posts tagged with {tag}.</p>
+    <Card>
+      <CardHeader>
+        <CardTitle>Filtered archive</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>
+          Live tag filtering is served from <code>/api/posts?tag={tag}</code>. Sample routes are prerendered for offline builds.
+        </p>
+        <p>
+          <a href="/blog">Back to blog</a>
+        </p>
+      </CardContent>
+    </Card>
+  </section>
+</BaseLayout>
+
+<style lang="scss">
+  .tag-page {
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: $space-xl $space-lg;
+    @include stack($space-md);
+
+    h1 {
+      font-family: $font-display;
+      margin: 0;
+    }
+  }
+</style>

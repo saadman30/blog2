@@ -1,0 +1,18 @@
+@import 'variables';
+
+@mixin respond-up($breakpoint) {
+  @media (min-width: $breakpoint) {
+    @content;
+  }
+}
+
+@mixin theme-surface {
+  background: var(--bg-primary);
+  color: hsl(var(--foreground));
+}
+
+@mixin stack($gap: $space-md) {
+  display: flex;
+  flex-direction: column;
+  gap: $gap;
+}

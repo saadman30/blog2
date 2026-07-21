@@ -1,0 +1,24 @@
+{
+  "name": "pcms",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portfolio & Content Management System",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev -w @pcms/api",
+    "dev:web": "npm run dev -w @pcms/web",
+    "build": "npm run build -w @pcms/api && npm run build -w @pcms/web",
+    "build:api": "npm run build -w @pcms/api",
+    "build:web": "npm run build -w @pcms/web",
+    "test": "npm run test -w @pcms/api && npm run test -w @pcms/web",
+    "test:api": "npm run test:cov -w @pcms/api",
+    "test:web": "npm run test:cov -w @pcms/web",
+    "lint": "npm run lint -w @pcms/api && npm run lint -w @pcms/web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
