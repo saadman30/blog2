@@ -1,4 +1,1 @@
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  EDITOR = 'EDITOR',
-}
+export { UserRole } from '../../domain';

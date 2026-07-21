@@ -100,20 +100,20 @@ Node version: **>= 20**.
 
 ## Architecture style of the API
 
-The API uses classic **NestJS layered modules**, not a full hexagonal/ports-and-adapters folder layout.
+The API uses **hexagonal architecture** (ports & adapters) inside Nest feature modules.
 
 ```text
 HTTP request
     → Guard (JWT? role? rate limit?)
-    → Controller (map HTTP → service call)
-    → Service (business rules)
-    → TypeORM Repository (SQL)
-    → PostgreSQL
+    → Controller (driving adapter → application service)
+    → Application service (business rules via ports)
+    → Persistence / queue / storage adapters (TypeORM, BullMQ, …)
+    → PostgreSQL / Redis / disk
     → Interceptor wraps success as { success: true, data }
     → Or Filter wraps errors as { success: false, ... }
 ```
 
-Each feature lives in `apps/api/src/modules/<name>/`:
+Each feature lives in `apps/api/src/modules/<name>/` with `domain/`, `application/` (ports + service), `infrastructure/` (adapters), and a Nest `*.module.ts` composition root.
 
 - `auth` — register, login, refresh, logout
 - `posts` — CRUD, publish, schedule, markdown render
@@ -121,7 +121,7 @@ Each feature lives in `apps/api/src/modules/<name>/`:
 - `analytics` — views, claps, summary
 - `health` — DB + Redis checks
 
-Shared cross-cutting code lives in `apps/api/src/common/`.
+Shared kernel enums/models live in `apps/api/src/domain/`. Cross-cutting Nest code stays in `apps/api/src/common/`.
 
 ---
 

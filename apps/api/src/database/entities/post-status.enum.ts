@@ -1,6 +1,1 @@
-export enum PostStatus {
-  DRAFT = 'DRAFT',
-  SCHEDULED = 'SCHEDULED',
-  PUBLISHED = 'PUBLISHED',
-  ARCHIVED = 'ARCHIVED',
-}
+export { PostStatus } from '../../domain';

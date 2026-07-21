@@ -16,8 +16,9 @@ apps/api/src/
 ├── config/
 │   ├── configuration.ts    # env → typed config namespaces
 │   └── typeorm.data-source.ts  # CLI migrations data source
+├── domain/                 # shared kernel (enums, User)
 ├── database/
-│   ├── entities/           # TypeORM models
+│   ├── entities/           # TypeORM persistence models
 │   ├── migrations/         # SQL schema history
 │   └── seeds/              # empty placeholder
 ├── common/                 # shared guards/filters/utils (see doc 06)
@@ -29,13 +30,14 @@ apps/api/src/
     └── health/
 ```
 
-Every feature module typically has:
+Every feature module is hexagonal:
 
-- `*.module.ts` — Nest wiring
-- `*.controller.ts` — HTTP routes
-- `*.service.ts` — business logic
-- `*.spec.ts` — unit tests
-- `dto/` when needed
+- `domain/` — plain models
+- `application/ports/` — interfaces + injection tokens
+- `application/*.service.ts` — use cases (ports only; no TypeORM/BullMQ/…)
+- `infrastructure/` — adapters (`http/`, `persistence/`, messaging, storage, …)
+- `*.module.ts` — Nest composition root (bind ports → adapters)
+- `*.spec.ts` — unit tests beside each unit
 
 ---
 

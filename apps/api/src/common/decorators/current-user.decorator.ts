@@ -1,11 +1,11 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { UserEntity } from '../../database/entities';
+import { User } from '../../domain';
 
 export function extractCurrentUser(
   _data: unknown,
   ctx: ExecutionContext,
-): UserEntity | undefined {
-  const request = ctx.switchToHttp().getRequest<{ user?: UserEntity }>();
+): User | undefined {
+  const request = ctx.switchToHttp().getRequest<{ user?: User }>();
   return request.user;
 }
 

@@ -9,7 +9,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { PostStatus } from './post-status.enum';
+import { PostStatus } from '../../domain';
+
 import { UserEntity } from './user.entity';
 import { CommentEntity } from './comment.entity';
 import { AnalyticsEntity } from './analytics.entity';

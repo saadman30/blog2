@@ -1,5 +1,5 @@
 ---
-description: NestJS API conventions for apps/api — modules, auth, TypeORM, validation, observability.
+description: NestJS API conventions for apps/api — hexagonal modules, auth, TypeORM, validation, observability.
 globs: apps/api/**/*.ts
 alwaysApply: false
 ---
@@ -8,25 +8,36 @@ alwaysApply: false
 
 Package: `@pcms/api`. Entry: `src/main.ts`. Root module: `src/app.module.ts`.
 
-## Module layout
+## Architecture
 
-Each feature under `src/modules/<name>/`:
-- `*.module.ts`, `*.controller.ts`, `*.service.ts`
-- `dto/` for request/response shapes
-- `*.spec.ts` beside each testable unit
+**Hexagonal (ports & adapters)** per feature module. Dependency rule: `domain` ← `application` ← `infrastructure` / Nest composition root. Never the reverse.
 
-Shared code lives in `src/common/` (guards, filters, interceptors, decorators, utils).
+```text
+src/modules/<feature>/
+├── domain/                 # plain models (no Nest/TypeORM)
+├── application/
+│   ├── ports/              # interfaces + injection tokens (*.port.ts)
+│   └── *.service.ts        # use cases; depend on ports only
+├── infrastructure/
+│   ├── persistence/        # TypeORM adapters + mappers
+│   ├── http/               # controllers + DTOs
+│   └── …                   # messaging, storage, security, etc.
+└── <feature>.module.ts     # wires ports → adapters
+```
+
+Shared kernel: `src/domain/` (enums, `User`). Cross-cutting Nest concerns stay in `src/common/`. TypeORM entities remain in `src/database/entities/` (persistence detail).
 
 ## Conventions
 
 - Global prefix: `/api` (set in `main.ts`)
 - Config via `ConfigService`: `config.get('database.host')` — namespaces in `src/config/configuration.ts`
-- Validation: `class-validator` DTOs + global `ValidationPipe`
+- Validation: `class-validator` DTOs in `infrastructure/http/dto/` + global `ValidationPipe`
 - Auth: JWT access token in body; refresh in HttpOnly SameSite=Strict cookie
 - RBAC: `@Roles()` + `RolesGuard`; public routes via `@Public()`
 - Rate limiting: `@nestjs/throttler` on sensitive auth routes
-- Content: Markdown via `marked`, sanitize with DOMPurify (`content.util.ts`)
-- Media: Sharp → WebP, local disk under `MEDIA_LOCAL_PATH`
+- Content: Markdown via `HtmlRendererPort` (marked adapter); sanitize with DOMPurify (`content.util.ts`)
+- Media: `ImageProcessorPort` + `FileStoragePort` (Sharp / local disk under `MEDIA_LOCAL_PATH`)
+- Application layer may use Nest `@Injectable` and HTTP exceptions; must not import TypeORM, BullMQ, bcrypt, sharp, fs, or marked directly
 
 ## Database
 
@@ -39,36 +50,41 @@ Shared code lives in `src/common/` (guards, filters, interceptors, decorators, u
 - Logging: Pino via `nestjs-pino`
 - Metrics: Prometheus at `/metrics` (not under `/api`)
 - Tracing: OpenTelemetry — loaded via `tracing.ts` before `main.ts`
-- Health: `@nestjs/terminus` — liveness vs readiness in health module
+- Health: `@nestjs/terminus` — liveness vs readiness; Redis via `CACHE_HEALTH` port
 
 ## Adding endpoints
 
 ```typescript
-// ✅ Match existing patterns
+// ✅ Thin HTTP adapter → application service
 @Controller('posts')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class PostsController {
+  constructor(private readonly postsService: PostsService) {}
+
   @Get('admin')
   @Roles(UserRole.ADMIN, UserRole.EDITOR)
-  findAllAdmin() { ... }
+  findAllAdmin() {
+    return this.postsService.findAllAdmin();
+  }
 }
 ```
 
 - Permission-check every new route
 - Return data through existing interceptors/filters
-- Add `*.spec.ts` with mocked repositories/queues — **100% coverage** on included paths
+- Bind new ports in the feature `*.module.ts`
+- Add `*.spec.ts` beside each testable unit — mock **ports** in application specs; mock TypeORM/etc. in adapter specs — **100% coverage** on included paths
 
 ## Testing (Jest)
 
 - Colocate: `foo.service.spec.ts` next to `foo.service.ts`
 - Setup: `jest.setup.ts` (reflect-metadata, DOMPurify mock)
-- Excluded from coverage: `main.ts`, `*.module.ts`, DTOs, entities, enums, migrations
+- Excluded from coverage: `main.ts`, `*.module.ts`, DTOs, entities, enums, ports, models, `src/domain/**`, migrations
 - Run: `npm run test:cov -w @pcms/api`
 
 ## Anti-patterns
 
+- Application/domain importing TypeORM, BullMQ, or framework-specific I/O libraries
 - New global providers without wiring in `AppModule`
-- Raw SQL when TypeORM repository suffices
+- Raw SQL when TypeORM repository adapter suffices
 - Skipping validation DTOs on POST/PATCH bodies
 - Returning unsanitized HTML from user Markdown
 - Integration tests in `test/` folder (empty — use unit mocks unless harness is added)
