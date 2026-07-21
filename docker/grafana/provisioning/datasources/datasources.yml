@@ -4,6 +4,7 @@ datasources:
   - name: Prometheus
     type: prometheus
     access: proxy
+    uid: Prometheus
     url: http://prometheus:9090
     isDefault: true
     editable: false
@@ -11,11 +12,12 @@ datasources:
   - name: Loki
     type: loki
     access: proxy
+    uid: Loki
     url: http://loki:3100
     editable: false
     jsonData:
       derivedFields:
-        - datasourceUid: Prometheus
-          matcherRegex: '"trace_id":"([a-f0-9]+)"'
-          name: TraceID
+        - name: TraceID
+          matcherRegex: '"trace_id":"(\w+)"'
+          datasourceUid: Prometheus
           url: ''
