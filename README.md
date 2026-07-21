@@ -2,13 +2,19 @@
 
 Monorepo for a secure, Dockerized portfolio and blog CMS.
 
+## Technical documentation
+
+Detailed under-the-hood docs (architecture, API, web, auth, DB, Docker, flows, gaps):
+
+**→ [docs/README.md](./docs/README.md)**
+
 ## Stack
 
 | Layer | Technology |
 |-------|------------|
 | API | NestJS, TypeORM, PostgreSQL, Redis/BullMQ |
-| Web | Astro (SSG/SSR), shadcn/ui, React islands, SCSS Modules |
-| Tests | Jest (API, 100% coverage), Vitest (Web, 100% coverage) |
+| Web | Astro (static SSG), shadcn/ui, React islands, Tailwind + SCSS |
+| Tests | Jest (API), Vitest (Web) — high coverage thresholds on measured paths |
 | Infra | Docker multi-stage builds, docker-compose |
 
 ## Structure
@@ -17,6 +23,7 @@ Monorepo for a secure, Dockerized portfolio and blog CMS.
 apps/api   NestJS REST API
 apps/web   Astro frontend + back office
 docker/    Dockerfiles & compose
+docs/      Technical documentation
 ```
 
 ## Quick start
@@ -32,8 +39,8 @@ npm run dev:web   # http://localhost:4321
 ## Tests
 
 ```bash
-npm run test:api   # Jest + 100% coverage threshold
-npm run test:web   # Vitest + 100% coverage threshold
+npm run test:api   # Jest + coverage threshold
+npm run test:web   # Vitest + coverage threshold
 ```
 
 ## Docker (full stack)
@@ -46,5 +53,5 @@ docker compose -f docker/docker-compose.yml up --build
 
 - Helmet, strict CORS, global ValidationPipe
 - JWT access tokens + HttpOnly SameSite=Strict refresh cookies
-- RBAC (`ADMIN` / `EDITOR`), Redis-backed rate limiting
+- RBAC (`ADMIN` / `EDITOR`), rate limiting
 - DOMPurify sanitization for rendered Markdown
