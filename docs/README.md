@@ -25,7 +25,7 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 ### Part 3 — Operations & quality
 
 9. [09 — Docker & infrastructure](./09-docker-and-infrastructure.md) — Compose, Dockerfiles, ports  
-10. [10 — Testing](./10-testing.md) — Jest (API), Vitest (web), coverage rules  
+10. [10 — Testing](./10-testing.md) — tutorial: Jest (API), Vitest (web), how mocks/coverage work, how to add tests  
 11. [11 — Current gaps & honesty map](./11-current-gaps.md) — what is real vs stubbed (read before assuming a feature exists)  
 
 ### Part 4 — Observability (logs, metrics, traces, Grafana)
@@ -64,7 +64,7 @@ Jump to a specific file if you already know the big picture. Otherwise, follow t
 | [07 — Web deep dive](./web/07-web-deep-dive.md) | Astro pages, React islands, styles, stores, API client |
 | [08 — Request flows](./08-request-flows.md) | Step-by-step: login, publish, schedule, clap, health |
 | [09 — Docker & infrastructure](./09-docker-and-infrastructure.md) | Compose services, Dockerfiles, ports, volumes |
-| [10 — Testing](./10-testing.md) | Jest (API), Vitest (web), coverage rules |
+| [10 — Testing](./10-testing.md) | Tutorial: run suites, Jest/Vitest setup, mock ports, write tests, 100% coverage gate |
 | [11 — Current gaps & honesty map](./11-current-gaps.md) | What exists vs what is stubbed / incomplete |
 
 ### Observability
