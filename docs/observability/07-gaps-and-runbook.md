@@ -1,189 +1,387 @@
-# 07 — Gaps, runbook & troubleshooting
+# 07 - Gaps And Runbook
 
-This page is the honest companion to the observability docs: what works out of the box, what is **prepared but incomplete**, and how to debug common issues.
+This page answers two practical questions:
 
----
+```text
+What works today?
+What should I check when something looks broken?
+```
 
-## What works today (checklist)
+It is intentionally honest. Some observability pieces are fully working, and some are prepared but not fully connected yet.
+
+## What Works Today
+
+Fully working:
 
 | Capability | Status |
-|------------|--------|
-| Structured JSON logs with `trace_id` / `span_id` | ✅ API stdout |
-| HTTP request metrics (rate, duration, errors) | ✅ `/metrics` |
-| Node default metrics (heap, RSS, etc.) | ✅ `/metrics` |
-| TypeORM pool gauge | ✅ every 15s |
-| OTLP trace export to Collector | ✅ API (+ web in dev/preview) |
-| Trace context on server-side `apiFetch` | ✅ `trace-headers.ts` |
-| Liveness / readiness probes | ✅ `/health/liveness`, `/health/readiness` |
-| Prometheus scraping API | ✅ Docker Compose |
-| Grafana dashboards for HTTP + pool metrics | ✅ |
-| Health/metrics excluded from log + trace noise | ✅ |
+|---|---|
+| API JSON logs | Working on stdout |
+| `trace_id` / `span_id` in API logs | Working when a span is active |
+| HTTP request metrics | Working at `/metrics` |
+| Node default metrics | Working at `/metrics` |
+| TypeORM DB pool metric | Working every 15 seconds |
+| Prometheus scraping API metrics | Working in Docker Compose |
+| Grafana metric dashboards | Working |
+| API traces sent to OTel Collector | Working |
+| Web server traces in dev/preview | Working |
+| Server-side web-to-API trace headers | Working |
+| Liveness and readiness probes | Working |
+| Health/metrics routes skipped by log/trace noise controls | Working |
 
----
+## What Is Not Fully Wired Yet
 
-## Known gaps
+Prepared but incomplete:
 
-### 1. Logs do not reach Loki automatically
+| Gap | What you will see |
+|---|---|
+| API logs are not shipped to Loki | Grafana log panels stay empty |
+| Traces are not stored in Tempo/Jaeger | No Grafana trace UI yet |
+| Web tracing is not loaded in production Docker | Web container OTEL env has little effect |
+| Browser-only calls do not propagate traces | Client-side button requests start separate/no traces |
+| Some future metrics do not exist yet | Do not add dashboards for them yet |
+| API Compose service has no healthcheck | Web may start before API is truly ready |
+| `/metrics` is unauthenticated | Must protect it in production |
 
-**Situation:** Loki runs in Compose; Grafana panels query `{job="pcms-api"}`. There is **no Promtail**, **no Docker logging driver**, and **no OTEL logs pipeline** shipping API stdout into Loki.
+The most important beginner note:
 
-**What you see:** Log panels in Grafana stay empty.
+```text
+Empty Grafana log panels are expected right now.
+```
 
-**Workarounds:**
+That does not mean Prometheus, Grafana, or the API are broken.
 
-- Use `docker compose logs -f api` for live logs
-- Add [Promtail](https://grafana.com/docs/loki/latest/send-data/promtail/) or Grafana Alloy as a Compose service tailing container logs
-- Or export logs via OTEL logs exporter → Collector → Loki
+## Gap 1: Logs Do Not Reach Loki Yet
 
-### 2. Traces only print to Collector logs
+Current situation:
 
-**Situation:** `otel-collector-config.yml` exports traces to `logging` exporter only — not Jaeger, Tempo, or Grafana Tempo datasource.
+```text
+API writes logs to stdout.
+Loki is running.
+Grafana has Loki panels prepared.
+No service ships API stdout into Loki.
+```
 
-**What you see:** Traces in `docker logs otel-collector`, not in Grafana trace UI.
+Result:
 
-**Next step:** Add a `otlp` or `jaeger` exporter pointing at Tempo/Jaeger and add Grafana trace datasource.
+```text
+Grafana log panels are empty.
+```
 
-### 3. Web tracing not loaded in production Docker
+Use this for logs today:
 
-**Situation:** `Dockerfile.web` runs `serve` without `NODE_OPTIONS='--import ./src/instrumentation.mjs'`.
+```bash
+docker compose -f docker/docker-compose.yml logs -f api
+```
 
-**What you see:** `OTEL_SERVICE_NAME=pcms-web` on the container has no effect for static serving.
+Possible future fixes:
 
-**Dev/preview:** Tracing works via `package.json` dev/preview scripts.
+```text
+Add Promtail
+Add Grafana Alloy
+Add a Docker logging driver
+Add an OpenTelemetry logs pipeline
+```
 
-### 4. Browser client calls do not propagate traces
+## Gap 2: Traces Only Print To Collector Logs
 
-**Situation:** `injectTraceHeaders` is a no-op when `window` is defined.
+Current situation:
 
-**What you see:** `ClapButton` and other `client:load` islands do not continue server traces.
+```text
+API sends traces to the OpenTelemetry Collector.
+Collector receives them.
+Collector only uses a logging exporter today.
+```
 
-**Fix direction:** Browser OTEL SDK or pass trace context from SSR props.
+Result:
 
-### 5. Future application metrics (not in dashboard)
+```text
+Traces appear in Collector logs.
+They do not appear in a Grafana trace UI yet.
+```
 
-These metric names were considered for **PCMS Overview** but are **not registered in API code** and **panels were removed** from the dashboard until implemented:
+View traces today:
 
-| Metric | Intended meaning |
-|--------|------------------|
-| `redis_cache_hits_total` / `redis_cache_misses_total` | Cache effectiveness |
-| `scheduled_posts_executed_total` | BullMQ scheduler published count |
-| `claps_rate_limit_blocks_total` | Throttled clap requests |
+```bash
+docker compose -f docker/docker-compose.yml logs -f otel-collector
+```
 
-Add counters in the relevant services before re-adding Grafana panels.
+Possible future fixes:
 
-### 6. API Compose service has no healthcheck
+```text
+Add Grafana Tempo
+or add Jaeger
+then configure Collector to export traces there
+then add a Grafana trace datasource
+```
 
-Postgres and Redis have healthchecks; `api` does not. `web` depends on `api` with `service_started` only — not readiness.
+## Gap 3: Web Production Docker Tracing Is Limited
 
-**Impact:** Web may start before API can serve `/api/posts`.
+The web app has tracing for dev/preview.
 
-**Fix direction:** Add Compose `healthcheck` curling `/health/readiness`.
+But the production Docker image serves static files with `serve`.
 
-### 7. `/metrics` is unauthenticated
+Result:
 
-Fine for internal Docker network; **do not** expose publicly without protection.
+```text
+OTEL_SERVICE_NAME=pcms-web exists in Docker,
+but tracing is not really active for static serving.
+```
 
----
+This is only a problem if you expect production web-server traces.
 
-## Runbook: “Is observability working?”
+## Gap 4: Browser Calls Do Not Propagate Traces
 
-### Step 1 — API metrics
+The helper:
+
+```text
+apps/web/src/utils/trace-headers.ts
+```
+
+does nothing when running in the browser.
+
+Result:
+
+```text
+Server-side web requests can pass trace headers.
+Browser-only React island calls do not.
+```
+
+Possible future fixes:
+
+```text
+Add browser OpenTelemetry
+or pass server trace context into browser code
+```
+
+## Gap 5: Future Metrics Are Not Implemented
+
+These metric names are ideas, not current API output:
+
+| Metric | Meaning |
+|---|---|
+| `redis_cache_hits_total` | Cache hits |
+| `redis_cache_misses_total` | Cache misses |
+| `scheduled_posts_executed_total` | Scheduled posts published |
+| `claps_rate_limit_blocks_total` | Clap requests blocked |
+
+Do not add Grafana panels for these until the API emits them.
+
+## Gap 6: API Has No Compose Healthcheck
+
+Postgres and Redis have Docker healthchecks.
+
+The API service does not currently define one.
+
+Result:
+
+```text
+web depends on api service_started,
+not api service_healthy.
+```
+
+So the web container can start before the API is truly ready.
+
+Future fix:
+
+```text
+Add a Compose healthcheck that curls /health/readiness.
+```
+
+## Gap 7: `/metrics` Is Public
+
+The metrics endpoint has no JWT protection.
+
+This is okay for local/internal Docker use.
+
+For production:
+
+```text
+Do not expose /metrics directly to the public internet.
+```
+
+Use an internal network, allowlist, auth proxy, or Kubernetes network policy.
+
+## Runbook: Is Observability Working?
+
+Use this checklist when you are unsure.
+
+### 1. Check API Metrics
 
 ```bash
 curl -sf http://localhost:3001/metrics | grep -c http_requests_total
 ```
 
-Expect a number ≥ 0. After traffic, counters should increase.
+Expected:
 
-### Step 2 — Prometheus target
+```text
+A number is printed.
+```
 
-Open http://localhost:9090/targets — `pcms-api` state **UP**.
+After traffic, counters should increase.
 
-### Step 3 — Generate traffic
+### 2. Check Prometheus Target
+
+Open:
+
+```text
+http://localhost:9090/targets
+```
+
+Expected:
+
+```text
+pcms-api is UP.
+```
+
+If it is down, the API may not be running or Prometheus may not be able to reach it.
+
+### 3. Generate Traffic
 
 ```bash
 for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:3001/api/posts; done
 ```
 
-### Step 4 — Grafana graphs
+Wait 15-30 seconds because Prometheus scrapes every 15 seconds.
 
-Open http://localhost:3000 → Dashboards → PCMS → **PCMS Overview**.
+### 4. Check Grafana Metrics
 
-- Request Rate should move above zero
-- Latency panel should populate after a few scrape intervals
+Open:
 
-### Step 5 — Logs with trace IDs
+```text
+http://localhost:3000
+```
+
+Go to:
+
+```text
+Dashboards -> PCMS -> PCMS Overview
+```
+
+Expected:
+
+```text
+Request rate moves above zero.
+Latency panels populate.
+```
+
+### 5. Check Logs With Trace IDs
 
 ```bash
 docker compose -f docker/docker-compose.yml logs api 2>&1 | grep trace_id | tail -5
 ```
 
-Hit an API route (not `/health`). You should see JSON with `trace_id`.
+Expected:
 
-### Step 6 — Traces at collector
+```text
+API JSON log lines with trace_id.
+```
+
+Make sure you hit a real API route, not `/health` or `/metrics`.
+
+### 6. Check Traces At The Collector
 
 ```bash
 docker compose -f docker/docker-compose.yml logs otel-collector 2>&1 | tail -20
 ```
 
-After API requests, look for exported span batches.
+Expected:
 
----
+```text
+Span batches after API requests.
+```
 
-## Runbook: readiness failing
+## Runbook: Readiness Is Failing
+
+Check readiness:
 
 ```bash
 curl -s http://localhost:3001/health/readiness | jq .
 ```
 
-| Failed check | Action |
-|--------------|--------|
-| `database` | `docker compose ps postgres`; verify `DATABASE_HOST`; check API logs for TypeORM errors |
-| `redis` | `docker compose ps redis`; `redis-cli -h localhost ping` |
-| `memory_heap` | Restart API; investigate leak; or raise `MEMORY_HEAP_LIMIT_BYTES` if legitimately large |
+Then use the failed key:
 
----
+| Failed check | What to inspect |
+|---|---|
+| `database` | Postgres container, `DATABASE_HOST`, TypeORM errors |
+| `redis` | Redis container, `REDIS_HOST`, Redis connectivity |
+| `memory_heap` | API memory usage, possible leak, memory limit |
 
-## Runbook: empty Grafana log panels
+Useful commands:
 
-Expected until log shipping exists. Confirm Loki itself is up:
+```bash
+docker compose -f docker/docker-compose.yml ps postgres
+docker compose -f docker/docker-compose.yml ps redis
+docker compose -f docker/docker-compose.yml logs api
+```
+
+## Runbook: Grafana Log Panels Are Empty
+
+This is expected today.
+
+Confirm Loki itself is running:
 
 ```bash
 curl -s http://localhost:3100/ready
 ```
 
-Should return `ready` when Loki is healthy.
+Expected:
 
----
+```text
+ready
+```
 
-## Runbook: local dev without Docker observability
+Then remember:
 
-You can run API alone with tracing to a local collector:
+```text
+Loki being ready does not mean API logs are being shipped to Loki.
+```
+
+Use API Docker logs instead:
 
 ```bash
-# Terminal 1 — only collector
-docker compose -f docker/docker-compose.yml up otel-collector
+docker compose -f docker/docker-compose.yml logs -f api
+```
 
-# Terminal 2 — API with .env
+## Runbook: Local Dev Without Full Docker Stack
+
+You can run only the Collector:
+
+```bash
+docker compose -f docker/docker-compose.yml up otel-collector
+```
+
+Then run the API with:
+
+```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces npm run dev:api
 ```
 
-Metrics: still at http://localhost:3001/metrics (Prometheus optional).
+Metrics are still available at:
 
----
+```text
+http://localhost:3001/metrics
+```
 
-## Suggested implementation order (if you extend observability)
+Prometheus is optional for local debugging.
 
-1. **Promtail** → Loki (unlock log panels immediately)
-2. **Tempo** + Collector exporter (unlock trace UI in Grafana)
-3. **Counters** for scheduler / claps / cache (then add Grafana panels back)
-4. **Compose healthcheck** on API readiness
-5. **Web Docker** tracing import if you need SSR trace continuity in prod
+## Suggested Implementation Order
 
----
+If you want to extend observability, do it in this order:
 
-## Related docs
+| Order | Work | Why |
+|---:|---|---|
+| 1 | Add Promtail or Grafana Alloy | Makes Grafana log panels useful |
+| 2 | Add Tempo or Jaeger | Makes traces browsable |
+| 3 | Add missing application counters | Enables future dashboard panels |
+| 4 | Add API Compose healthcheck | Lets services depend on readiness |
+| 5 | Improve web/browser tracing | Connects more user interactions |
 
-- [01 — Overview](./01-overview.md)
-- [04 — Metrics](./04-metrics.md)
-- [Main gaps doc](../11-current-gaps.md)
+## Remember
+
+```text
+Metrics in Grafana should work today.
+Logs in Grafana are prepared but not wired.
+Traces reach the Collector but not a trace UI.
+```
+
+That one sentence explains most of the current observability stack.

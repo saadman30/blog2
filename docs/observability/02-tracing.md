@@ -1,150 +1,232 @@
-# 02 — Distributed tracing
+# 02 - Tracing
 
-## What is a trace?
+Tracing answers this question:
 
-A **trace** follows one logical operation — for example “user clicked Save on WriteForm” — across services and functions.
+```text
+What happened during this one request?
+```
 
-- A trace has a **trace ID** (same for the whole journey).
-- Inside the trace are **spans** (smaller steps: “HTTP POST /api/posts”, “Postgres query”, etc.).
-- Spans can be nested (parent / child).
+Metrics can tell you:
 
-PCMS uses **OpenTelemetry (OTEL)** to create spans automatically and export them in **OTLP** format over HTTP.
+```text
+The API was slow around 2:15 PM.
+```
 
----
+Tracing can tell you:
 
-## Configuration
+```text
+This specific GET /api/posts request spent most of its time waiting on the database.
+```
 
-| Variable | Default | Meaning |
-|----------|---------|---------|
-| `OTEL_SERVICE_NAME` | `pcms-api` or `pcms-web` | Shows up as the service name in traces |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318/v1/traces` | Where spans are POSTed |
+## Trace vs Span
 
-In Docker Compose, both `api` and `web` point at:
+A **trace** is the whole journey.
+
+A **span** is one step inside that journey.
+
+Example:
+
+```text
+Trace ID: abc123
+
+Span 1: GET /api/posts
+  Span 2: Nest route handler
+  Span 3: Postgres query
+  Span 4: Redis call
+```
+
+Beginner translation:
+
+```text
+Trace = full trip
+Span  = one stop during the trip
+```
+
+Every span in the same journey shares the same `trace_id`.
+
+Each span has its own `span_id`.
+
+## What PCMS Uses
+
+PCMS uses:
+
+| Thing | Meaning |
+|---|---|
+| OpenTelemetry | The standard library/tooling for traces |
+| OTLP | The format/protocol used to send traces |
+| OTel Collector | A local service that receives traces |
+
+The API sends traces to:
 
 ```text
 http://otel-collector:4318/v1/traces
 ```
 
-Config namespace in API: `telemetryConfig` in `apps/api/src/config/configuration.ts` (loaded into ConfigModule; tracing.ts reads env directly at bootstrap).
-
----
-
-## API tracing (`apps/api/src/tracing.ts`)
-
-### What gets instrumented
-
-Uses `@opentelemetry/sdk-node` with `@opentelemetry/auto-instrumentations-node`:
-
-| Instrumentation | Setting |
-|-----------------|---------|
-| HTTP (incoming + outgoing) | On, but **ignores** URLs containing `/health` or `/metrics` |
-| Express | On |
-| File system (`fs`) | **Off** (reduces noise) |
-| Other common libs | Via auto-instrumentations bundle (e.g. `pg`, `ioredis` may get spans depending on version) |
-
-### Export path
+In local non-Docker development, the default is:
 
 ```text
-API process
-  → OTLPTraceExporter (HTTP)
-  → OTEL_EXPORTER_OTLP_ENDPOINT
-  → OpenTelemetry Collector :4318
+http://localhost:4318/v1/traces
 ```
 
-### Shutdown
+## API Tracing
 
-On `SIGTERM`, `sdk.shutdown()` flushes pending spans (graceful container stop).
-
-### Build note
-
-`tracing.ts` is compiled to `dist/tracing.js` and imported with `--import` **before** `main.js`. It is excluded from Jest coverage (`jest.config.ts`) because it runs at process entry, not as a testable module graph.
-
----
-
-## Web tracing (`apps/web/src/instrumentation.mjs`)
-
-Loaded only when Node starts with:
-
-```bash
-NODE_OPTIONS='--import ./src/instrumentation.mjs'
-```
-
-Used in `dev` and `preview` scripts — **not** in `astro build`, and **not** in the production Docker `serve` command today.
-
-Similar setup to API:
-
-- Service name from `OTEL_SERVICE_NAME` (default `pcms-web`)
-- OTLP HTTP exporter to same endpoint
-- Auto-instrumentations with `fs` disabled, HTTP enabled
-
-**What this traces in practice:** Astro dev server HTTP requests (SSR-ish server work during dev), and outbound HTTP from the Node side.
-
-**What it does not trace:** Pure browser-only React island clicks (unless you add browser OTEL later). Static files served by `serve` in Docker have no Node instrumentation.
-
----
-
-## Propagating context to the API
-
-When the **web server** (Node) calls the API, it should pass the current trace so the API continues the same trace.
-
-File: `apps/web/src/utils/trace-headers.ts`
+API tracing starts in:
 
 ```text
-injectTraceHeaders(headers)
-  → if running in browser (window exists): return headers unchanged
-  → else: propagation.inject(context.active(), carrier)
-  → sets traceparent / tracestate on the Headers object
+apps/api/src/tracing.ts
 ```
 
-`apiFetch` in `api-client.ts` calls this before every request.
+That file creates an OpenTelemetry `NodeSDK`.
 
-**Result:** A blog index fetch or login from Astro dev can appear as one distributed trace: web span → API span.
+It configures:
 
-**Browser-only calls** (e.g. `ClapButton` in the client) do not inject server trace headers today.
-
----
-
-## OpenTelemetry Collector
-
-File: `docker/otel-collector/otel-collector-config.yml`
-
-```yaml
-receivers:
-  otlp:
-    protocols:
-      grpc:  :4317
-      http:  :4318
-
-exporters:
-  logging:
-    verbosity: basic
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      exporters: [logging]
+```text
+service name  -> pcms-api
+trace exporter -> OTLP over HTTP
+instrumentation -> automatic HTTP/Express tracing
 ```
 
-**What this means today:**
+## Why Tracing Must Start First
 
-- Collector **accepts** traces on 4317 (gRPC) and 4318 (HTTP).
-- It **prints** them to the collector container logs (`logging` exporter).
-- It does **not** forward to Jaeger, Tempo, or Grafana Cloud yet.
+OpenTelemetry needs to patch/instrument libraries before the app imports them.
 
-To see traces locally:
+That is why the API starts Node like this:
+
+```text
+node --import ./dist/tracing.js ./dist/main.js
+```
+
+Plain English:
+
+```text
+Load tracing first.
+Then load the Nest app.
+```
+
+If tracing loads too late, OpenTelemetry may miss early HTTP or framework work.
+
+## What Gets Traced
+
+The API automatically traces:
+
+| Area | Status |
+|---|---|
+| Incoming HTTP requests | Yes |
+| Outgoing HTTP requests | Yes |
+| Express/Nest request handling | Yes |
+| File system calls | No, intentionally disabled |
+| Health and metrics endpoints | No, intentionally ignored |
+
+Health and metrics endpoints are skipped because they are called frequently by tools. Tracing them would create noise.
+
+Skipped URL patterns:
+
+```text
+/health
+/metrics
+```
+
+## What Happens To A Trace
+
+For a normal API request:
+
+```text
+1. Request arrives at API.
+2. OpenTelemetry creates or continues a span.
+3. Nest handles the request.
+4. Pino can read the active span and add trace_id/span_id to logs.
+5. The request finishes.
+6. OpenTelemetry sends the span to the Collector.
+7. The Collector prints it to its Docker logs today.
+```
+
+Important: the Collector receives traces, but does not store them in a trace UI yet.
+
+So today you inspect traces with:
 
 ```bash
 docker compose -f docker/docker-compose.yml logs -f otel-collector
 ```
 
-Make some API requests; you should see span batches in the collector output.
+## Web Tracing
 
----
+The web app has tracing setup in:
 
-## Linking traces to logs
+```text
+apps/web/src/instrumentation.mjs
+```
 
-Pino mixin (`pino-logger.config.ts`) reads the **active span** from OpenTelemetry context and adds:
+It is used in dev/preview when Node starts with:
+
+```bash
+NODE_OPTIONS='--import ./src/instrumentation.mjs'
+```
+
+What this can trace:
+
+```text
+Astro dev/preview server requests
+server-side HTTP calls from the web app
+```
+
+What this does not trace today:
+
+```text
+browser-only React island clicks
+static files served by the production Docker web image
+```
+
+## Trace Propagation
+
+Trace propagation means:
+
+```text
+Pass the current trace ID from one service to the next.
+```
+
+Example:
+
+```text
+Web request starts trace abc123
+  -> Web calls API
+  -> API continues trace abc123
+```
+
+Without propagation, the web and API would create separate traces, and you would lose the full journey.
+
+The helper is:
+
+```text
+apps/web/src/utils/trace-headers.ts
+```
+
+It injects W3C trace headers:
+
+```text
+traceparent
+tracestate
+```
+
+Those headers let the API continue the same trace.
+
+## Browser Limitation
+
+`injectTraceHeaders()` does nothing in the browser today.
+
+That means browser-only calls like a client-side button click do not continue a server trace yet.
+
+This is expected with the current implementation.
+
+Possible future fixes:
+
+```text
+Add browser OpenTelemetry
+or pass trace context from server-rendered HTML into client code
+```
+
+## Logs And Traces Connect
+
+Pino reads the active OpenTelemetry span and adds:
 
 ```json
 {
@@ -153,41 +235,63 @@ Pino mixin (`pino-logger.config.ts`) reads the **active span** from OpenTelemetr
 }
 ```
 
-So a log line and a trace share the same `trace_id` when both exist for that request.
+That means a log line and a trace can share the same `trace_id`.
 
-Grafana Loki datasource defines a **derived field** regex on `"trace_id":"(\w+)"` so log lines can link toward trace exploration (once traces are stored in a backend Grafana can query).
-
----
-
-## Noise control
-
-Both tracing and logging **skip** health and metrics endpoints:
-
-| System | Mechanism |
-|--------|-----------|
-| OTel HTTP | `ignoreIncomingRequestHook` / `ignoreOutgoingRequestHook` on `/health`, `/metrics` |
-| Pino | `autoLogging.ignore` same URL patterns |
-
-This keeps dashboards and trace volume focused on real user traffic.
-
----
-
-## Mental model
+Beginner workflow:
 
 ```text
-1. Request hits API
-2. OTel HTTP instrumentation creates/continues a span
-3. Nest handler runs inside that context
-4. Pino logs include trace_id / span_id
-5. On response, span ends and exports to Collector
-6. HttpMetricsInterceptor records Prometheus metrics (separate from OTel, but same request)
+1. See a bad or slow request in logs.
+2. Copy the trace_id.
+3. Find the same trace in the Collector logs.
 ```
 
-Metrics and traces are **complementary**: metrics show aggregates; traces show one slow request’s story.
+Later, after Tempo or Jaeger is added, this can become clickable in Grafana.
 
----
+## Configuration
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `OTEL_SERVICE_NAME` | `pcms-api` or `pcms-web` | Name shown on traces |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318/v1/traces` | Where spans are sent |
+
+In Docker Compose:
+
+```text
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
+OTEL_SERVICE_NAME=pcms-api
+```
+
+## Quick Check
+
+Start the stack:
+
+```bash
+docker compose -f docker/docker-compose.yml up --build
+```
+
+Generate API traffic:
+
+```bash
+curl http://localhost:3001/api/posts
+```
+
+Watch the Collector:
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f otel-collector
+```
+
+You should see span batches after requests.
+
+## Remember
+
+```text
+Metrics tell you something got slow.
+Logs tell you what the app said.
+Traces tell you where one request went.
+```
 
 ## Next
 
-- [03 — Logging](./03-logging.md)
-- [07 — Gaps & runbook](./07-gaps-and-runbook.md) (Tempo/Jaeger, web Docker tracing)
+- [03 - Logging](./03-logging.md)
+- [07 - Gaps and Runbook](./07-gaps-and-runbook.md)

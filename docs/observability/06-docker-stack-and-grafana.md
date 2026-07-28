@@ -1,176 +1,279 @@
-# 06 — Docker stack & Grafana
+# 06 - Docker Stack And Grafana
 
-## Full Compose topology
+This page explains the local observability stack.
 
-`docker/docker-compose.yml` runs **eight** services when you start everything:
+Beginner mental model:
 
-| Service | Image | Host port | Role |
-|---------|-------|-----------|------|
-| `postgres` | postgres:16-alpine | 5432 | App database |
-| `redis` | redis:7-alpine | 6379 | BullMQ + health |
-| `api` | built from `Dockerfile.api` | 3001 | Nest API + metrics + logs |
-| `web` | built from `Dockerfile.web` | 4321 | Static Astro site |
-| `otel-collector` | otel/opentelemetry-collector-contrib:0.120.0 | 4317, 4318 | Receives OTLP traces |
-| `prometheus` | prom/prometheus:v3.2.1 | 9090 | Metrics TSDB |
-| `loki` | grafana/loki:3.4.2 | 3100 | Log storage (ready) |
-| `grafana` | grafana/grafana:11.5.2 | 3000 | Dashboards |
+```text
+Docker Compose starts the app plus the tools that watch the app.
+```
 
-Persistent volumes: `postgres_data`, `prometheus_data`, `loki_data`, `grafana_data`.
+The app services are:
 
----
+```text
+web
+api
+postgres
+redis
+```
 
-## Start commands
+The observability services are:
+
+```text
+otel-collector
+prometheus
+loki
+grafana
+```
+
+## Start Everything
 
 ```bash
-# Everything including observability
 docker compose -f docker/docker-compose.yml up --build
-
-# App + infra only (no Grafana stack)
-docker compose -f docker/docker-compose.yml up -d postgres redis api web
-
-# Observability only (if api already running elsewhere — adjust prometheus.yml target)
-docker compose -f docker/docker-compose.yml up -d otel-collector prometheus loki grafana
 ```
 
----
+This starts the full app and observability stack.
 
-## API container observability env
+## Services
 
-```yaml
-OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
-OTEL_SERVICE_NAME: pcms-api
+| Service | Port | Beginner meaning |
+|---|---:|---|
+| `postgres` | 5432 | Database |
+| `redis` | 6379 | Queue/cache support |
+| `api` | 3001 | Nest API, logs, metrics, traces |
+| `web` | 4321 | Astro web app |
+| `otel-collector` | 4317/4318 | Receives traces |
+| `prometheus` | 9090 | Stores metrics |
+| `loki` | 3100 | Log database, running but not receiving API logs yet |
+| `grafana` | 3000 | Dashboard UI |
+
+## What Each Observability Service Does
+
+### OpenTelemetry Collector
+
+The API sends traces to the Collector.
+
+In Docker:
+
+```text
+api -> http://otel-collector:4318/v1/traces
 ```
 
-API starts with tracing import:
+Today the Collector prints traces to its Docker logs.
 
-```dockerfile
-CMD ["node", "--import", "./dist/tracing.js", "./dist/main.js"]
-```
+It does not send traces to Tempo, Jaeger, or Grafana Cloud yet.
 
----
-
-## Web container observability env
-
-```yaml
-OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
-OTEL_SERVICE_NAME: pcms-web
-```
-
-**Note:** Production web image runs `serve` for static files **without** `instrumentation.mjs`. OTEL env vars on the web container have **little effect** until the Dockerfile loads Node instrumentation (see gaps doc).
-
----
-
-## Grafana first login
-
-| Field | Value |
-|-------|-------|
-| URL | http://localhost:3000 |
-| User | `admin` |
-| Password | `admin` |
-
-`GF_USERS_ALLOW_SIGN_UP=false` — no self-registration.
-
----
-
-## Provisioned datasources
-
-Auto-loaded from `docker/grafana/provisioning/datasources/datasources.yml`:
-
-### Prometheus (default)
-
-- URL: `http://prometheus:9090`
-- UID: `Prometheus`
-
-### Loki
-
-- URL: `http://loki:3100`
-- UID: `Loki`
-- Derived field: extracts `trace_id` from JSON log lines
-
----
-
-## Provisioned dashboards
-
-Folder: **PCMS** (from `docker/grafana/provisioning/dashboards/dashboards.yml`)
-
-JSON files in `docker/grafana/dashboards/`:
-
-### PCMS Overview (`pcms-overview.json`)
-
-| Section | Panels |
-|---------|--------|
-| Application Health | Request rate (RPS), latency p95/p99, error rate % |
-| Infrastructure & Database | TypeORM pool, Node heap/RSS |
-| Live Structured Logs | Loki log stream with trace_id in line format |
-
-Future metrics (scheduler, claps rate limit, Redis cache) are documented in [04 — Metrics](./04-metrics.md) but **not** shown until implemented in code.
-
-### PCMS API Observability (`pcms-api-observability.json`)
-
-| Panel | Query focus |
-|-------|-------------|
-| HTTP Request Rate | `rate(http_requests_total[5m])` |
-| HTTP Error Rate | `rate(http_request_errors_total[5m])` |
-| HTTP Latency p95/p99 | histogram quantiles on `http_request_duration_seconds` |
-| TypeORM Connection Pool | `typeorm_pool_connections` by `state` |
-| Correlated Logs by Trace ID | Loki `{job="pcms-api"} \| json \| trace_id != ""` |
-
-Dashboard refresh: **10s** default, time range **last 1 hour**.
-
----
-
-## Prometheus UI
-
-http://localhost:9090
-
-Useful checks:
-
-- **Status → Targets** — `pcms-api` should be **UP**
-- **Graph** — paste `sum(rate(http_requests_total[5m]))`
-
-If target is down, API container may not be running or network misconfigured.
-
----
-
-## OTel Collector ports
-
-| Port | Protocol | Use |
-|------|----------|-----|
-| 4317 | gRPC OTLP | Alternative trace ingest |
-| 4318 | HTTP OTLP | What PCMS apps use (`/v1/traces`) |
-
-View received traces:
+Check Collector logs:
 
 ```bash
 docker compose -f docker/docker-compose.yml logs -f otel-collector
 ```
 
----
+### Prometheus
 
-## Generating traffic for dashboards
+Prometheus scrapes metrics from:
+
+```text
+http://api:3001/metrics
+```
+
+Open Prometheus:
+
+```text
+http://localhost:9090
+```
+
+Useful page:
+
+```text
+Status -> Targets
+```
+
+The `pcms-api` target should be `UP`.
+
+### Loki
+
+Loki stores logs.
+
+But important:
+
+```text
+Loki is running, but API logs are not shipped into Loki yet.
+```
+
+That means Grafana log panels can be empty even when the API is working.
+
+To make those panels work later, add a log shipper such as:
+
+```text
+Promtail
+Grafana Alloy
+OpenTelemetry logs pipeline
+```
+
+### Grafana
+
+Grafana is the dashboard UI.
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+Login:
+
+```text
+user: admin
+password: admin
+```
+
+Grafana reads metrics from Prometheus.
+
+It is also configured for Loki, but logs will only appear after log shipping is added.
+
+## Provisioned Datasources
+
+Grafana datasources are configured in:
+
+```text
+docker/grafana/provisioning/datasources/datasources.yml
+```
+
+Configured datasources:
+
+| Datasource | Meaning |
+|---|---|
+| Prometheus | Metrics source |
+| Loki | Log source, prepared for future log shipping |
+
+Prometheus is the default datasource.
+
+## Provisioned Dashboards
+
+Dashboards live in:
+
+```text
+docker/grafana/dashboards/
+```
+
+Current dashboards:
+
+| Dashboard | What it shows |
+|---|---|
+| PCMS Overview | Request rate, latency, errors, memory, DB pool, logs panel |
+| PCMS API Observability | Focused API metrics and correlated logs panel |
+
+Metric panels should work after Prometheus scrapes the API.
+
+Log panels are expected to stay empty until logs are shipped to Loki.
+
+## API Observability Environment
+
+The API container uses:
+
+```text
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
+OTEL_SERVICE_NAME=pcms-api
+```
+
+The API Dockerfile starts tracing before the app:
+
+```text
+node --import ./dist/tracing.js ./dist/main.js
+```
+
+That order is important because OpenTelemetry must load before the app.
+
+## Web Observability Environment
+
+The web container also has:
+
+```text
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
+OTEL_SERVICE_NAME=pcms-web
+```
+
+But the production web Docker image serves static files with `serve`.
+
+That means:
+
+```text
+The web OTEL environment variables have little effect in production Docker today.
+```
+
+Web tracing mainly works in dev/preview scripts.
+
+## Generate Traffic For Dashboards
+
+Run:
 
 ```bash
-# Health (won't affect HTTP metrics much — interceptor still runs, but excluded from some noise controls differ)
-curl http://localhost:3001/health/liveness
-
-# Public API traffic (shows in metrics)
 for i in $(seq 1 20); do curl -s http://localhost:3001/api/posts > /dev/null; done
+```
 
-# View metrics
+Then wait 15-30 seconds.
+
+Why wait?
+
+```text
+Prometheus scrapes every 15 seconds.
+Grafana reads from Prometheus.
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+Then go to:
+
+```text
+Dashboards -> PCMS
+```
+
+You should see request-rate and latency panels move.
+
+## Useful Checks
+
+Prometheus target:
+
+```text
+http://localhost:9090/targets
+```
+
+Raw metrics:
+
+```bash
 curl -s http://localhost:3001/metrics | grep http_requests_total
 ```
 
-Wait ~15–30 seconds for Prometheus scrapes and Grafana graphs to update.
+API logs:
 
----
+```bash
+docker compose -f docker/docker-compose.yml logs -f api
+```
 
-## File reference map
+Collector traces:
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f otel-collector
+```
+
+Loki readiness:
+
+```bash
+curl -s http://localhost:3100/ready
+```
+
+## File Map
 
 ```text
 docker/
 ├── docker-compose.yml
-├── Dockerfile.api              # --import tracing.js
-├── Dockerfile.web              # static serve (no tracing import)
+├── Dockerfile.api
+├── Dockerfile.web
 ├── otel-collector/
 │   └── otel-collector-config.yml
 ├── prometheus/
@@ -186,8 +289,14 @@ docker/
         └── pcms-api-observability.json
 ```
 
----
+## Remember
+
+```text
+Prometheus metrics -> visible in Grafana today.
+Loki logs -> prepared, but not receiving API logs yet.
+Collector traces -> visible in Collector logs today, not Grafana trace UI yet.
+```
 
 ## Next
 
-- [07 — Gaps & runbook](./07-gaps-and-runbook.md)
+- [07 - Gaps and Runbook](./07-gaps-and-runbook.md)

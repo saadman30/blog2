@@ -1,143 +1,227 @@
-# 05 — Health checks
+# 05 - Health Checks
 
-## Why health checks exist
+Health checks answer this question:
 
-When PCMS runs in Docker or Kubernetes, the platform needs to know:
+```text
+Is the app okay enough to run?
+```
 
-1. **Is the process running?** → **Liveness**
-2. **Can it handle real work?** → **Readiness** (DB, Redis, memory OK)
+Docker, Kubernetes, load balancers, and humans can call health endpoints to see whether the API is alive and ready.
 
-PCMS uses **@nestjs/terminus** for structured health responses.
+## Liveness vs Readiness
 
----
+There are two different checks:
+
+| Check | Beginner meaning | Endpoint |
+|---|---|---|
+| Liveness | Is the process alive? | `/health/liveness` |
+| Readiness | Can it handle real traffic? | `/health/readiness` |
+
+Think of it like this:
+
+```text
+Liveness = are you awake?
+Readiness = are you ready to work?
+```
+
+An app can be alive but not ready.
+
+Example:
+
+```text
+The API process is running,
+but Postgres is down.
+```
+
+That means:
+
+```text
+Liveness might pass.
+Readiness should fail.
+```
 
 ## Endpoints
 
-Controller: `apps/api/src/modules/health/health.controller.ts`
+These routes are public and outside `/api`:
 
-Both routes are `@Public()` (no JWT) and live **outside** `/api`:
-
-| Probe | URL | Checks |
-|-------|-----|--------|
-| **Liveness** | `GET /health/liveness` | Memory heap under limit |
-| **Readiness** | `GET /health/readiness` | Postgres ping + Redis ping + memory heap |
-
-### Memory limit
-
-```typescript
-const MEMORY_HEAP_LIMIT_BYTES = 300 * 1024 * 1024; // 300 MB
+```text
+GET http://localhost:3001/health/liveness
+GET http://localhost:3001/health/readiness
 ```
 
-Uses `MemoryHealthIndicator.checkHeap('memory_heap', MEMORY_HEAP_LIMIT_BYTES)`.
+They are outside `/api` because infrastructure tools expect stable probe paths that do not require authentication.
 
-If heap exceeds 300 MB, the check fails.
+## Code Location
 
-### Database
+Controller:
 
-`TypeOrmHealthIndicator.pingCheck('database')` — runs a simple DB ping through TypeORM.
+```text
+apps/api/src/modules/health/infrastructure/http/health.controller.ts
+```
 
-### Redis
+Redis indicator:
 
-Custom `RedisHealthIndicator` (`redis.health-indicator.ts`):
+```text
+apps/api/src/modules/health/infrastructure/http/redis.health-indicator.ts
+```
 
-1. Create a short-lived `ioredis` client (`lazyConnect: true`, `maxRetriesPerRequest: 1`)
-2. `connect()` → `ping()` → expect `PONG`
-3. `disconnect()` in `finally`
-4. On failure, throws `HealthCheckError` with status details
+The module uses:
 
-Host/port from `redis.host` / `redis.port` config (same as BullMQ).
+```text
+@nestjs/terminus
+```
 
----
+Terminus is Nest's health-check package.
 
-## Response shape (Terminus)
+## What Liveness Checks
 
-Successful check (simplified):
+Liveness checks:
+
+```text
+memory_heap
+```
+
+The app verifies that Node heap memory is under:
+
+```text
+300 MB
+```
+
+If heap memory grows beyond that, liveness fails.
+
+## What Readiness Checks
+
+Readiness checks:
+
+```text
+database
+redis
+memory_heap
+```
+
+Plain English:
+
+```text
+Can the API reach Postgres?
+Can the API reach Redis?
+Is memory still under the limit?
+```
+
+If any of those fail, readiness returns HTTP `503`.
+
+## Response Shape
+
+A successful response looks roughly like:
 
 ```json
 {
   "status": "ok",
   "info": {
-    "memory_heap": { "status": "up" }
+    "memory_heap": {
+      "status": "up"
+    }
   },
   "error": {},
   "details": {
-    "memory_heap": { "status": "up" }
+    "memory_heap": {
+      "status": "up"
+    }
   }
 }
 ```
 
-Readiness includes `database` and `redis` keys when all pass.
-
-Failed check returns HTTP **503** with `status: "error"` and which indicator failed.
-
-Then `TransformInterceptor` still wraps success responses as `{ success: true, data: ... }` — **health endpoints return Terminus format directly** through the normal pipeline; verify actual response in your environment with `curl -i`.
-
----
-
-## Difference from the old health module
-
-Earlier PCMS docs described:
-
-- `GET /api/health`
-- `GET /api/health/live`
-
-The observability update replaced that with Kubernetes-style paths **without** the `/api` prefix:
-
-- `/health/liveness`
-- `/health/readiness`
-
-Update any bookmarks, load balancers, or scripts accordingly.
-
----
-
-## Who calls these?
-
-| Caller | Typical use |
-|--------|-------------|
-| Docker Compose | Postgres/Redis have their own healthchecks; API does not define a Compose healthcheck yet |
-| Kubernetes | `livenessProbe` → `/health/liveness`, `readinessProbe` → `/health/readiness` |
-| You (manual) | `curl http://localhost:3001/health/readiness` before demos |
-
----
-
-## Observability integration
-
-| System | Behavior |
-|--------|----------|
-| Pino access logs | **Skipped** for `/health/*` |
-| OTel HTTP traces | **Skipped** for URLs containing `/health` |
-| Prometheus | Does not scrape health (scrapes `/metrics` only) |
-
----
-
-## Module structure
+Readiness includes more keys when everything passes:
 
 ```text
-health.module.ts
-  imports: TerminusModule
-  controllers: HealthController
-  providers: RedisHealthIndicator
+database
+redis
+memory_heap
 ```
 
-No separate `HealthService` class anymore — Terminus indicators do the work.
+A failed check returns:
 
----
+```text
+HTTP 503
+status: "error"
+details about what failed
+```
 
-## Troubleshooting
+## Why Health Checks Are Not Logged Or Traced
 
-| Symptom | Likely cause |
-|---------|----------------|
-| Readiness fails `database` | Postgres down, wrong `DATABASE_HOST`, migrations/schema issue |
-| Readiness fails `redis` | Redis down, wrong `REDIS_HOST`, firewall |
-| Readiness fails `memory_heap` | Memory leak or limit too low for workload |
-| Liveness fails but readiness OK | Unusual — liveness only checks heap; process may be wedged elsewhere |
+Health checks are called often.
+
+If every health check created a log and trace, the useful observability data would get noisy.
+
+So PCMS skips health routes in:
+
+```text
+Pino access logs
+OpenTelemetry HTTP traces
+```
+
+## Difference From Older Docs
+
+Older docs may mention:
+
+```text
+/api/health
+/api/health/live
+```
+
+Those are not the current observability endpoints.
+
+Current endpoints:
+
+```text
+/health/liveness
+/health/readiness
+```
+
+## Manual Checks
+
+Check liveness:
+
+```bash
+curl -i http://localhost:3001/health/liveness
+```
+
+Check readiness:
+
+```bash
+curl -i http://localhost:3001/health/readiness
+```
+
+Pretty-print readiness:
 
 ```bash
 curl -s http://localhost:3001/health/readiness | jq .
 ```
 
----
+## Troubleshooting
+
+If readiness fails:
+
+| Failed check | What to check |
+|---|---|
+| `database` | Is Postgres running? Is `DATABASE_HOST` correct? |
+| `redis` | Is Redis running? Is `REDIS_HOST` correct? |
+| `memory_heap` | Is the API using too much memory? |
+
+Useful Docker commands:
+
+```bash
+docker compose -f docker/docker-compose.yml ps postgres
+docker compose -f docker/docker-compose.yml ps redis
+docker compose -f docker/docker-compose.yml logs api
+```
+
+## Remember
+
+```text
+Liveness asks: should this process be restarted?
+Readiness asks: should traffic be sent here?
+```
 
 ## Next
 
-- [06 — Docker stack & Grafana](./06-docker-stack-and-grafana.md)
+- [06 - Docker and Grafana](./06-docker-stack-and-grafana.md)

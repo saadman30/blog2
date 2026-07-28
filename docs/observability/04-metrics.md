@@ -1,22 +1,73 @@
-# 04 — Metrics (Prometheus)
+# 04 - Metrics
 
-## What are metrics?
+Metrics answer this question:
 
-**Metrics** are numbers over time: request count, error rate, latency histograms, memory usage, DB pool size.
+```text
+How many? How fast? How often? How broken?
+```
 
-PCMS exposes them at:
+Metrics are numbers over time.
+
+Examples:
+
+```text
+Requests per second
+Error percentage
+Average or p95 latency
+Memory usage
+Database connection pool size
+```
+
+## Metrics vs Logs vs Traces
+
+Beginner mental model:
+
+```text
+Metrics = charts and counters
+Logs    = individual messages
+Traces  = one request's path
+```
+
+If users say "the site feels slow", metrics help you confirm:
+
+```text
+Is latency actually high?
+When did it start?
+Is every route slow or only one route?
+Are errors increasing too?
+```
+
+## Where Metrics Live
+
+The API exposes metrics at:
 
 ```text
 GET http://localhost:3001/metrics
 ```
 
-This path is **outside** `/api` so Prometheus can scrape without JWT auth.
+This is not under `/api`.
 
----
+That is intentional. Prometheus needs a simple unauthenticated endpoint to scrape inside the Docker network.
 
-## How Prometheus gets metrics
+## How Prometheus Gets Metrics
 
-File: `docker/prometheus/prometheus.yml`
+Prometheus does not receive metrics automatically.
+
+It repeatedly asks the API for them:
+
+```text
+Prometheus -> GET http://api:3001/metrics
+```
+
+That repeated pull is called scraping.
+
+Config file:
+
+```text
+docker/prometheus/prometheus.yml
+```
+
+The important scrape config:
 
 ```yaml
 scrape_configs:
@@ -26,139 +77,275 @@ scrape_configs:
       - targets: ['api:3001']
 ```
 
-- Scrape every **15 seconds**
-- In Docker, hostname `api` is the API container
-- UI: http://localhost:9090
+In Docker, `api` means the API container.
 
----
+Prometheus scrapes every 15 seconds.
 
-## Libraries used
+## Libraries Used
 
-| Library | Role |
-|---------|------|
-| `@willsoto/nestjs-prometheus` | Registers `/metrics` route and Nest providers |
-| `prom-client` | Underlying Prometheus client |
+The API uses:
 
-Registered in `AppModule`:
+| Library | Purpose |
+|---|---|
+| `@willsoto/nestjs-prometheus` | Connects Prometheus metrics to Nest |
+| `prom-client` | The underlying metrics client |
 
-```typescript
-PrometheusModule.register({
-  path: '/metrics',
-  defaultMetrics: { enabled: true },
-}),
+Registered in:
+
+```text
+apps/api/src/app.module.ts
 ```
 
-`defaultMetrics: true` adds standard Node/process metrics, including:
+## Default Metrics
 
-- `process_resident_memory_bytes` (RSS)
-- `nodejs_heap_size_used_bytes`
-- `nodejs_heap_size_total_bytes`
-- Event loop / GC metrics (depending on prom-client version)
+The app enables default Node.js/process metrics.
 
----
+These include things like:
 
-## Custom application metrics
+```text
+process memory
+Node heap used
+Node heap total
+event loop / GC metrics depending on prom-client version
+```
 
-Defined in `apps/api/src/common/metrics/metrics.constants.ts` and `metrics.providers.ts`.
+Useful examples:
 
-### HTTP metrics (via `HttpMetricsInterceptor`)
+```text
+process_resident_memory_bytes
+nodejs_heap_size_used_bytes
+nodejs_heap_size_total_bytes
+```
 
-Global interceptor registered in `AppModule` as `APP_INTERCEPTOR`.
+## Custom HTTP Metrics
 
-For every HTTP request it records:
+HTTP metrics are recorded by:
 
-| Metric name | Type | Labels | Meaning |
-|-------------|------|--------|---------|
-| `http_request_duration_seconds` | Histogram | `method`, `route`, `status_code` | How long the handler took |
-| `http_requests_total` | Counter | `method`, `route`, `status_code` | Total requests |
-| `http_request_errors_total` | Counter | `method`, `route`, `status_code` | Errors (thrown exceptions **or** status ≥ 400) |
+```text
+apps/api/src/common/interceptors/http-metrics.interceptor.ts
+```
 
-**Route label:** prefers Express `request.route.path` (template like `/posts/:id`) over raw `request.path` so you do not get one time series per UUID.
+The interceptor wraps every request and records:
 
-**Duration:** measured with `process.hrtime.bigint()` for sub-millisecond accuracy, converted to seconds for Prometheus.
+| Metric | Type | Beginner meaning |
+|---|---|---|
+| `http_requests_total` | Counter | How many requests happened |
+| `http_request_errors_total` | Counter | How many requests failed |
+| `http_request_duration_seconds` | Histogram | How long requests took |
 
-**Histogram buckets:** `[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]` seconds.
+Each metric has labels:
 
-Example PromQL used in Grafana:
+```text
+method
+route
+status_code
+```
+
+Example labels:
+
+```text
+method="GET"
+route="/posts"
+status_code="200"
+```
+
+## Counter vs Histogram vs Gauge
+
+Prometheus uses different metric types.
+
+| Type | Simple meaning | Example |
+|---|---|---|
+| Counter | A number that only goes up | Total requests |
+| Histogram | A timing distribution | Request duration |
+| Gauge | A number that can go up or down | Current DB pool size |
+
+In PCMS:
+
+```text
+http_requests_total          = counter
+http_request_errors_total    = counter
+http_request_duration_seconds = histogram
+typeorm_pool_connections     = gauge
+```
+
+## Why The Route Label Uses Templates
+
+The metrics code tries to use route templates instead of raw paths.
+
+Good:
+
+```text
+/posts/:id
+```
+
+Bad:
+
+```text
+/posts/abc123
+/posts/def456
+/posts/ghi789
+```
+
+Why?
+
+If every ID becomes a separate metric series, Prometheus gets noisy and expensive.
+
+This is called avoiding high-cardinality labels.
+
+## Latency Buckets
+
+The duration metric is a histogram.
+
+It groups request times into buckets:
+
+```text
+0.005s
+0.01s
+0.025s
+0.05s
+0.1s
+0.25s
+0.5s
+1s
+2.5s
+5s
+10s
+```
+
+Grafana can use these buckets to show p95 or p99 latency.
+
+Beginner translation:
+
+```text
+p95 latency = 95% of requests were faster than this number.
+p99 latency = 99% of requests were faster than this number.
+```
+
+## Database Pool Metric
+
+The DB pool metric is recorded by:
+
+```text
+apps/api/src/common/metrics/typeorm-pool.metrics.ts
+```
+
+Metric:
+
+```text
+typeorm_pool_connections
+```
+
+Labels:
+
+```text
+state="total"
+state="idle"
+state="waiting"
+```
+
+Meaning:
+
+| State | Meaning |
+|---|---|
+| `total` | Total Postgres connections in the pool |
+| `idle` | Connections available for use |
+| `waiting` | Requests waiting for a connection |
+
+If `waiting` is often above zero, the API may be waiting for database connections.
+
+## Example PromQL
+
+Total request rate:
 
 ```promql
 sum(rate(http_requests_total[5m]))
+```
+
+p95 latency:
+
+```promql
 histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+```
+
+Error rate percentage:
+
+```promql
 100 * sum(rate(http_request_errors_total[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1e-9)
 ```
 
-### TypeORM connection pool
+Do not worry if PromQL feels weird at first. The main idea is:
 
-Provider: `TypeOrmPoolMetrics` (`typeorm-pool.metrics.ts`)
+```text
+PromQL asks Prometheus questions about numbers over time.
+```
 
-| Metric name | Type | Labels | Meaning |
-|-------------|------|--------|---------|
-| `typeorm_pool_connections` | Gauge | `state` | Pool size by state |
+## Future Metrics Not Implemented Yet
 
-`state` values:
+These names are documented as future ideas, but they are not registered in API code today:
 
-- `total` — `pool.totalCount`
-- `idle` — `pool.idleCount`
-- `waiting` — `pool.waitingCount`
+| Metric | Intended meaning |
+|---|---|
+| `redis_cache_hits_total` | Cache hit count |
+| `redis_cache_misses_total` | Cache miss count |
+| `scheduled_posts_executed_total` | Scheduled posts published |
+| `claps_rate_limit_blocks_total` | Clap requests blocked by rate limiting |
 
-Collected on module init and every **15 seconds** until shutdown.
+Do not add Grafana panels for these until the code actually emits them.
 
-Reads the underlying `pg` pool via `dataSource.driver.master`.
+## Security Note
 
----
+`/metrics` is public inside this app.
 
-## Future metrics (not implemented)
+That is okay for local Docker/internal networks.
 
-These names are **not registered** in API code. They were removed from the **PCMS Overview** dashboard until counters exist:
+For production:
 
-| Metric | Intended use |
-|--------|----------------|
-| `redis_cache_hits_total` / `redis_cache_misses_total` | Redis cache hit ratio |
-| `scheduled_posts_executed_total` | Scheduled posts executed |
-| `claps_rate_limit_blocks_total` | Claps rate limit blocks |
+```text
+Do not expose /metrics directly to the public internet.
+```
 
-See [07 — Gaps](./07-gaps-and-runbook.md) for when to add them back to Grafana.
+Use network policy, an internal Prometheus, an allowlist, or authentication in front of it.
 
----
+## Manual Checks
 
-## Relationship to tracing
-
-| | Metrics | Traces |
-|---|---------|--------|
-| Granularity | Aggregated over time | Single request |
-| Storage | Prometheus TSDB | OTel Collector (logging exporter today) |
-| PCMS implementation | `HttpMetricsInterceptor` + prom-client | OTel auto-instrumentation |
-
-Both run on the same requests. A spike in `http_request_duration_seconds` p99 is your hint to find example `trace_id`s in logs.
-
----
-
-## Security note
-
-`/metrics` is **public** (no JWT). For production:
-
-- Do not expose port 3001 metrics to the internet without auth or network policy
-- Common pattern: Prometheus scrapes on an internal Docker/K8s network only
-- Or put nginx in front with IP allowlist
-
----
-
-## Manual checks
+View raw metrics:
 
 ```bash
-# Raw Prometheus text format
 curl -s http://localhost:3001/metrics | head -40
+```
 
-# Only HTTP metrics
+Only HTTP metrics:
+
+```bash
 curl -s http://localhost:3001/metrics | grep http_request
+```
 
-# Pool gauge
+Only DB pool metrics:
+
+```bash
 curl -s http://localhost:3001/metrics | grep typeorm_pool
 ```
 
----
+Generate traffic:
+
+```bash
+for i in $(seq 1 20); do curl -s http://localhost:3001/api/posts > /dev/null; done
+```
+
+## Remember
+
+Metrics are best for patterns:
+
+```text
+Is it slow?
+Is it getting slower?
+Are errors increasing?
+Did this start after a deploy?
+```
+
+Metrics do not tell the full story of one request. Use traces and logs for that.
 
 ## Next
 
-- [05 — Health checks](./05-health-checks.md)
-- [06 — Docker stack & Grafana](./06-docker-stack-and-grafana.md)
+- [05 - Health Checks](./05-health-checks.md)
+- [06 - Docker and Grafana](./06-docker-stack-and-grafana.md)

@@ -1,93 +1,182 @@
-# 03 — Logging
+# 03 - Logging
 
-## What logger PCMS uses
+Logging answers this question:
 
-The API uses **Pino** via **nestjs-pino**:
-
-- Fast structured JSON logging
-- One log line per HTTP request (automatic “access log” style)
-- Integrated as Nest’s application logger (`app.useLogger(app.get(Logger))`)
-
-Config factory: `apps/api/src/common/logger/pino-logger.config.ts`  
-Registered in `AppModule`:
-
-```typescript
-LoggerModule.forRootAsync({
-  inject: [ConfigService],
-  useFactory: createPinoLoggerConfig,
-}),
+```text
+What did the app say happened?
 ```
 
-Bootstrap in `main.ts` uses `bufferLogs: true` so early Nest messages wait until Pino is ready.
+A log is like a diary entry from the app.
 
----
+Examples:
 
-## Log levels
+```text
+Request finished
+User login failed
+Post created
+Failed to enqueue job
+```
 
-| Environment | Level |
-|-------------|-------|
-| `NODE_ENV=production` | `info` |
-| Anything else (e.g. development) | `debug` |
+## What PCMS Uses
 
-Set via `configService.get('app.nodeEnv')`.
+The API uses:
 
----
+```text
+Pino + nestjs-pino
+```
 
-## What a log line looks like
+Pino writes structured JSON logs to stdout.
 
-Pino HTTP logs are JSON on **stdout**. Typical fields include:
+Structured JSON means logs are machine-readable:
 
-- `level` — numeric Pino level
-- `time` — timestamp
-- `msg` — message
-- `req` / `res` — request/response metadata (method, url, statusCode)
-- **`trace_id`** — OpenTelemetry trace ID (when a span is active)
-- **`span_id`** — OpenTelemetry span ID (when a span is active)
-
-The trace fields come from the `mixin()` function:
-
-```typescript
-mixin() {
-  const span = trace.getSpan(context.active());
-  if (!span) return {};
-  const { traceId, spanId } = span.spanContext();
-  return { trace_id: traceId, span_id: spanId };
+```json
+{
+  "level": 30,
+  "msg": "request completed",
+  "trace_id": "...",
+  "span_id": "..."
 }
 ```
 
-**Why this matters:** you can grep logs by `trace_id` and match them to a distributed trace or to Grafana’s Loki panels.
+This is better than plain text because tools can search, filter, and parse fields.
 
----
+## Where Logging Is Configured
 
-## Which requests are NOT logged
+Logger config:
 
-Access logging is disabled for noisy probe endpoints:
-
-```typescript
-url.includes('/health') || url.includes('/metrics')
+```text
+apps/api/src/common/logger/pino-logger.config.ts
 ```
 
-So Kubernetes/Docker health checks and Prometheus scrapes do not flood your logs.
+App wiring:
 
-Application code can still use the Nest `Logger` for business messages on those paths if needed.
+```text
+apps/api/src/app.module.ts
+apps/api/src/main.ts
+```
 
----
+Nest uses Pino as the app logger, so normal Nest logs also go through Pino formatting.
 
-## Where logs go
+## Log Levels
 
-| Environment | Destination |
-|-------------|-------------|
-| Local `npm run dev:api` | Your terminal (stdout) |
-| Docker `api` container | `docker logs <api-container>` |
-| Grafana Loki | **Not automatic yet** — see [07 — Gaps](./07-gaps-and-runbook.md) |
+Log level controls how much the app says.
 
-Loki and Grafana dashboards are **prepared** (queries expect `{job="pcms-api"}` JSON logs), but Compose does not include Promtail or an OTEL logs pipeline yet. Until you add a log shipper, use `docker logs` or your platform’s log aggregation.
+| Environment | Level | Meaning |
+|---|---|---|
+| Production | `info` | Normal important logs |
+| Development/test-like environments | `debug` | More detailed logs |
 
----
+In the code:
 
-## Using the logger in your code
+```text
+NODE_ENV=production -> info
+anything else       -> debug
+```
 
-Inject Nest’s `Logger` in services/controllers:
+## What A Request Log Contains
+
+Pino HTTP logs usually include:
+
+| Field | Meaning |
+|---|---|
+| `level` | Log severity as a number |
+| `time` | Timestamp |
+| `msg` | Log message |
+| `req` | Request info, like method and URL |
+| `res` | Response info, like status code |
+| `trace_id` | The trace this log belongs to, if available |
+| `span_id` | The specific span this log belongs to, if available |
+
+The most useful beginner fields are:
+
+```text
+msg
+req.url
+res.statusCode
+trace_id
+```
+
+## Why `trace_id` Matters
+
+The logger reads the active OpenTelemetry span and adds:
+
+```json
+{
+  "trace_id": "...",
+  "span_id": "..."
+}
+```
+
+That means:
+
+```text
+The log line and the trace can be connected.
+```
+
+If you see an error log with `trace_id=abc123`, you can look for trace `abc123` in the OpenTelemetry Collector logs.
+
+Later, after a trace backend like Tempo or Jaeger is added, Grafana can make this easier.
+
+## What Is Not Logged Automatically
+
+The API skips automatic access logs for:
+
+```text
+/health
+/metrics
+```
+
+Why?
+
+Because tools call these routes frequently:
+
+```text
+Prometheus calls /metrics
+health probes call /health/*
+```
+
+Logging every one would bury the useful application logs.
+
+## Where Logs Go Today
+
+| Environment | Where to look |
+|---|---|
+| Local API dev | Terminal output |
+| Docker API container | `docker compose logs api` |
+| Grafana Loki | Not automatic yet |
+
+Important:
+
+```text
+Loki is running, and Grafana has log panels prepared.
+But API logs are not shipped into Loki yet.
+```
+
+So empty Grafana log panels are expected until Promtail, Grafana Alloy, or another log pipeline is added.
+
+## How To Read Logs Locally
+
+Follow API logs:
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f api
+```
+
+Find logs with trace IDs:
+
+```bash
+docker compose -f docker/docker-compose.yml logs api 2>&1 | grep trace_id | tail -5
+```
+
+Pretty-print a JSON log line if you have `jq`:
+
+```bash
+docker compose -f docker/docker-compose.yml logs api 2>&1 | tail -1 | jq .
+```
+
+## Logging In Application Code
+
+In services or controllers, use Nest's logger:
 
 ```typescript
 import { Logger } from '@nestjs/common';
@@ -98,57 +187,50 @@ this.logger.log('Post created');
 this.logger.error('Failed to enqueue job', err.stack);
 ```
 
-Because `app.useLogger(Pino)` is set, these go through Pino’s formatting.
+Because the app uses Pino, these messages go through the same structured logging setup.
 
----
+## Grafana/Loki Status
 
-## Grafana Loki integration (prepared)
+Grafana has Loki configured.
 
-Datasource config: `docker/grafana/provisioning/datasources/datasources.yml`
+The dashboard queries expect logs with a label like:
 
-- Loki URL: `http://loki:3100`
-- **Derived field** `TraceID` regex: `"trace_id":"(\w+)"` — clicking a trace ID in logs can jump to linked telemetry (when trace backend is wired)
-
-Dashboard log queries examples:
-
-```logql
-{job="pcms-api"} | json | line_format "{{.level}} trace_id={{.trace_id}} {{.msg}}"
+```text
+job="pcms-api"
 ```
 
-```logql
-{job="pcms-api"} | json | trace_id != ""
+But there is no log shipper yet.
+
+To make Grafana log panels work, add one of:
+
+```text
+Promtail
+Grafana Alloy
+Docker logging driver
+OpenTelemetry logs pipeline
 ```
 
-These panels work once logs with `job="pcms-api"` label reach Loki.
+## Beginner Debugging Flow
 
----
-
-## Loki server config (short)
-
-`docker/loki/loki-config.yml`:
-
-- Single-node, filesystem storage
-- HTTP on port 3100
-- **Retention:** 168 hours (7 days)
-- Auth disabled (local dev only — do not expose raw Loki to the public internet)
-
----
-
-## Tips for reading logs locally
-
-```bash
-# Follow API logs in Docker
-docker compose -f docker/docker-compose.yml logs -f api
-
-# Pretty-print one JSON line (if you have jq)
-docker compose -f docker/docker-compose.yml logs api 2>&1 | tail -1 | jq .
+```text
+1. Something failed.
+2. Check API logs.
+3. Find the log line with the error.
+4. Copy trace_id if present.
+5. Use that trace_id to connect the log to trace output.
+6. Use metrics to see whether it is a one-off issue or a widespread problem.
 ```
 
-Look for `trace_id` on failing requests, then correlate with metrics spikes or collector trace output.
+## Remember
 
----
+```text
+Logs are not charts.
+Logs are individual events.
+```
+
+Use logs when you need specific details about what happened.
 
 ## Next
 
-- [04 — Metrics](./04-metrics.md)
-- [07 — Gaps & runbook](./07-gaps-and-runbook.md)
+- [04 - Metrics](./04-metrics.md)
+- [07 - Gaps and Runbook](./07-gaps-and-runbook.md)
